@@ -1,12 +1,13 @@
+// quiz/ui/LoginFrame.java - MODIFIED
 package quiz.ui;
 
 import quiz.dao.UserDAO;
-import quiz.model.User; // Importă clasa User
-import util.DatabaseException; // Importă excepția personalizată
+import quiz.model.User;
+import util.DatabaseException;
 
 import javax.swing.*;
 import java.awt.*;
-// import java.sql.SQLException; // Nu mai este nevoie de SQLException direct, ci de DatabaseException
+// import java.sql.SQLException; // No longer needed directly
 
 public class LoginFrame extends JFrame {
 
@@ -43,15 +44,15 @@ public class LoginFrame extends JFrame {
             UserDAO userDAO = new UserDAO();
 
             try {
-                User loggedInUser = userDAO.login(username, password); // Aici preluăm obiectul User
-                if (loggedInUser != null) { // Verificăm dacă utilizatorul a fost găsit
+                User loggedInUser = userDAO.login(username, password); // Get User object
+                if (loggedInUser != null) {
                     JOptionPane.showMessageDialog(LoginFrame.this, "Login successful!");
                     dispose();
-                    new GameFrame(loggedInUser).setVisible(true); // Trimitem obiectul User
+                    new GameFrame(loggedInUser).setVisible(true); // Pass the User object to GameFrame
                 } else {
-                    JOptionPane.showMessageDialog(LoginFrame.this, "Invalid username or password."); // Mesaj mai specific
+                    JOptionPane.showMessageDialog(LoginFrame.this, "Invalid username or password.");
                 }
-            } catch (DatabaseException ex) { // Prindem excepția personalizată
+            } catch (DatabaseException ex) {
                 ex.printStackTrace();
                 JOptionPane.showMessageDialog(LoginFrame.this, "Database error during login: " + ex.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
             }
