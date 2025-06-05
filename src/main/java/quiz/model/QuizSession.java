@@ -11,6 +11,8 @@ public class QuizSession {
     private int finalScore;
     private int timeTaken;
     private String sessionType;
+    // în clasa QuizSession
+    private int categoryId; // poate fi -1 pentru fără categorie specifică
 
     // Constructors
     public QuizSession() {}
@@ -116,6 +118,14 @@ public class QuizSession {
 
     public void setSessionType(String sessionType) {
         this.sessionType = sessionType;
+    }
+
+    public int getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(int categoryId) {
+        this.categoryId = categoryId;
     }
 
 

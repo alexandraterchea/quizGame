@@ -1,16 +1,21 @@
 // quiz/ui/GameFrame.java - FINAL IMPROVED VERSION with CardLayout for all views
 package quiz.ui;
 
+import quiz.dao.CategoryDAO;
 import quiz.dao.QuestionDAO;
 import quiz.dao.QuizSessionDAO;
 import quiz.dao.ScoreDAO;
-import quiz.dao.CategoryDAO;
+import quiz.dao.UserDAO;
 import quiz.model.Category;
 import quiz.model.Question;
 import quiz.model.QuizSession;
 import quiz.model.User;
 import quiz.exceptions.DatabaseException;
-import quiz.dao.UserDAO;
+import quiz.controller.QuizController; // Import QuizController
+import quiz.controller.ProfileController; // Import ProfileController
+import quiz.controller.DashboardController; // Import DashboardController
+import quiz.dao.AchievementDAO; // Import AchievementDAO for showNewAchievements
+import quiz.dao.AnalyticsDAO; // Import AnalyticsDAO for showNewAchievements
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -18,6 +23,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
+import java.util.concurrent.TimeUnit; // Import TimeUnit for time formatting
 
 public class GameFrame extends JFrame {
     private User currentUser;
@@ -37,377 +43,196 @@ public class GameFrame extends JFrame {
     private JButton startQuizFlowButton;
     private JButton profileButton;
     private JButton viewStatsButton; // New stats button
+    private JButton exitButton; // Shared exit button
 
     // Category Selection Panel components
     private JPanel categoryPanel;
     private JComboBox<Category> categoryComboBox;
     private JButton startCategoryQuizButton;
-    private JButton backToWelcomeButtonCategory;
+    private JButton backToWelcomeButton;
 
     // Quiz Panel components
     private JPanel quizPanel;
     private JLabel questionLabel;
     private JRadioButton optionA, optionB, optionC, optionD;
     private ButtonGroup optionsGroup;
-    private JButton nextButton;
-    private JLabel sessionTimerLabel;
-    private Timer sessionTimer;
-    private int totalSessionTimeElapsed = 0;
-    private JLabel questionTimerLabel;
-    private Timer questionTimer;
-    private int timeLeftForQuestion;
+    private JButton submitButton;
+    private JLabel timerLabel;
+    private Timer quizTimer;
+    private int timeElapsed; // total time elapsed for the quiz
 
-    // Profile Panel components (now managed within CardLayout)
-    private ProfileFrame profilePanel; // Instance of ProfileFrame
+    // Controllers
+    private QuizController quizController;
+    private ProfileController profileController; // Added ProfileController
+    private DashboardController dashboardController; // Added DashboardController
 
-    private UserDAO userDAO = new UserDAO();
+    // DAOs - these will be passed to controllers
+    private QuestionDAO questionDAO;
+    private QuizSessionDAO quizSessionDAO;
+    private ScoreDAO scoreDAO;
+    private CategoryDAO categoryDAO;
+    private UserDAO userDAO;
+    private AchievementDAO achievementDAO; // For showing new achievements
+    private AnalyticsDAO analyticsDAO; // For dashboard/profile performance
 
-    // Color scheme
-    private final Color PRIMARY_COLOR = new Color(70, 130, 180);
-    private final Color SECONDARY_COLOR = new Color(60, 160, 60);
-    private final Color ACCENT_COLOR = new Color(255, 140, 0);
-    private final Color ERROR_COLOR = new Color(220, 53, 69);
-    private final Color BACKGROUND_COLOR = new Color(248, 249, 250);
-    private final Color CARD_COLOR = Color.WHITE;
-
-    // Exit Button
-    private JButton exitButton;
+    // UI Colors
+    private static final Color PRIMARY_COLOR = new Color(70, 130, 180); // SteelBlue
+    private static final Color SECONDARY_COLOR = new Color(60, 179, 113); // MediumAquamarine
+    private static final Color ACCENT_COLOR = new Color(255, 140, 0); // DarkOrange
+    private static final Color BACKGROUND_COLOR = new Color(240, 248, 255); // AliceBlue
+    private static final Color CARD_COLOR = Color.WHITE; // White for content cards
+    private static final Color TEXT_COLOR = new Color(50, 50, 50);
 
     public GameFrame(User user) {
         this.currentUser = user;
+        // Initialize DAOs
+        this.questionDAO = new QuestionDAO();
+        this.quizSessionDAO = new QuizSessionDAO();
+        this.scoreDAO = new ScoreDAO();
+        this.categoryDAO = new CategoryDAO();
+        this.userDAO = new UserDAO();
+        this.achievementDAO = new AchievementDAO();
+        this.analyticsDAO = new AnalyticsDAO();
+
+        // Initialize Controllers, passing necessary DAOs
+        this.quizController = new QuizController(currentUser, questionDAO, quizSessionDAO, scoreDAO, achievementDAO, analyticsDAO, this); // Pass GameFrame reference
+        // Profile and Dashboard controllers will be initialized when needed
+        // For now, let's just make sure we have analyticsDAO for the profile part.
+        // The ProfileFrame constructor needs a GameFrame reference now.
+
         setupFrame();
-        initializeComponents();
+        initComponents();
+        setupWelcomePanel();
+        setupCategoryPanel();
+        setupQuizPanel();
+
+        cardPanel.add(welcomePanel, "Welcome");
+        cardPanel.add(categoryPanel, "Category");
+        cardPanel.add(quizPanel, "Quiz");
+
+        add(cardPanel);
         showWelcomePanel();
     }
 
     private void setupFrame() {
         setTitle("QuizMaster - " + currentUser.getUsername());
-        // setSize(900, 600); // Removed fixed size
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setLocationRelativeTo(null); // Center on screen (before maximizing)
-        setExtendedState(JFrame.MAXIMIZED_BOTH); // Set to fullscreen
-        setResizable(true);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(800, 600);
+        setLocationRelativeTo(null); // Center the window
+        setLayout(new BorderLayout());
+        getContentPane().setBackground(BACKGROUND_COLOR);
 
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
         cardPanel.setBackground(BACKGROUND_COLOR);
-        add(cardPanel);
     }
 
-    private void initializeComponents() {
-        createExitButton(); // Initialize exit button once
-
-        createWelcomePanel();
-        createCategoryPanel();
-        createQuizPanel();
-        createProfileView(); // Initialize the ProfileFrame as a panel
-
-        cardPanel.add(welcomePanel, "Welcome");
-        cardPanel.add(categoryPanel, "CategorySelection");
-        cardPanel.add(quizPanel, "Quiz");
-        cardPanel.add(profilePanel, "Profile"); // Add profilePanel as a card
-    }
-
-    private JButton createExitButton() {
-        exitButton = createStyledButton("Exit", ERROR_COLOR);
+    private void initComponents() {
+        // Shared Exit Button (can be added to other panels as well if needed)
+        exitButton = createStyledButton("Exit", PRIMARY_COLOR);
         exitButton.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(this,
-                    "Are you sure you want to exit the application?",
-                    "Exit Application",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE);
+                    "Are you sure you want to exit QuizMaster?", "Exit Application",
+                    JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 System.exit(0);
             }
         });
-        return exitButton;
     }
 
-    private JPanel createCardBase(String title, String description, Color color) { // Removed icon parameter
-        JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(CARD_COLOR);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(230, 230, 230), 1),
-                new EmptyBorder(20, 20, 20, 20)
-        ));
+    private void setupWelcomePanel() {
+        welcomePanel = new JPanel();
+        welcomePanel.setLayout(new BoxLayout(welcomePanel, BoxLayout.Y_AXIS));
+        welcomePanel.setBorder(new EmptyBorder(50, 50, 50, 50));
+        welcomePanel.setBackground(CARD_COLOR);
+        welcomePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Add subtle shadow effect
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createRaisedBevelBorder(),
-                card.getBorder()
-        ));
+        welcomeLabel = new JLabel("Welcome, " + currentUser.getUsername() + "!");
+        welcomeLabel.setFont(new Font("Arial", Font.BOLD, 28));
+        welcomeLabel.setForeground(PRIMARY_COLOR);
+        welcomeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Removed iconLabel
-        // JLabel iconLabel = new JLabel(icon, SwingConstants.CENTER);
-        // iconLabel.setFont(new Font("Arial", Font.PLAIN, 24));
-        // iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        startQuizFlowButton = createStyledButton("Start New Quiz", SECONDARY_COLOR);
+        startQuizFlowButton.addActionListener(e -> cardLayout.show(cardPanel, "Category")); // Go to category selection
 
-        JLabel titleLabel = new JLabel(title, SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        titleLabel.setForeground(color);
-        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        profileButton = createStyledButton("View Profile", PRIMARY_COLOR);
+        profileButton.addActionListener(e -> showProfilePanel()); // Show profile panel
 
-        JLabel descLabel = new JLabel("<html><center>" + description + "</center></html>", SwingConstants.CENTER);
-        descLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        descLabel.setForeground(new Color(100, 100, 100));
-        descLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        viewStatsButton = createStyledButton("View Dashboard", PRIMARY_COLOR);
+        viewStatsButton.addActionListener(e -> showDashboardPanel()); // Show dashboard panel
 
-        // card.add(iconLabel); // Removed iconLabel
-        // card.add(Box.createRigidArea(new Dimension(0, 10)));
-        card.add(titleLabel);
-        card.add(Box.createRigidArea(new Dimension(0, 5)));
-        card.add(descLabel);
-        card.add(Box.createRigidArea(new Dimension(0, 15)));
-
-        return card;
+        welcomePanel.add(Box.createVerticalGlue());
+        welcomePanel.add(welcomeLabel);
+        welcomePanel.add(Box.createRigidArea(new Dimension(0, 30)));
+        welcomePanel.add(startQuizFlowButton);
+        welcomePanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        welcomePanel.add(profileButton);
+        welcomePanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        welcomePanel.add(viewStatsButton);
+        welcomePanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        welcomePanel.add(exitButton); // Add exit button to welcome panel
+        welcomePanel.add(Box.createVerticalGlue());
     }
 
-    private void createWelcomePanel() {
-        welcomePanel = new JPanel(new BorderLayout());
-        welcomePanel.setBackground(BACKGROUND_COLOR);
-        welcomePanel.setBorder(new EmptyBorder(40, 40, 40, 40));
+    private void setupCategoryPanel() {
+        categoryPanel = new JPanel();
+        categoryPanel.setLayout(new BoxLayout(categoryPanel, BoxLayout.Y_AXIS));
+        categoryPanel.setBorder(new EmptyBorder(50, 50, 50, 50));
+        categoryPanel.setBackground(CARD_COLOR);
 
-        // Header section
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setOpaque(false);
-
-        JLabel titleLabel = new JLabel("QuizMaster", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 36));
-        titleLabel.setForeground(PRIMARY_COLOR);
-
-        welcomeLabel = new JLabel("Welcome back, " + currentUser.getUsername() + "!", SwingConstants.CENTER);
-        welcomeLabel.setFont(new Font("Arial", Font.PLAIN, 18));
-        welcomeLabel.setForeground(new Color(100, 100, 100));
-        welcomeLabel.setBorder(new EmptyBorder(10, 0, 0, 0));
-
-        JPanel titlePanel = new JPanel(new BorderLayout());
-        titlePanel.setOpaque(false);
-        titlePanel.add(titleLabel, BorderLayout.CENTER);
-        titlePanel.add(welcomeLabel, BorderLayout.SOUTH);
-
-        headerPanel.add(titlePanel, BorderLayout.CENTER);
-        welcomePanel.add(headerPanel, BorderLayout.NORTH);
-
-        // Center section with cards
-        JPanel centerPanel = new JPanel(new GridBagLayout());
-        centerPanel.setOpaque(false);
-
-        JPanel cardsPanel = new JPanel(new GridLayout(1, 3, 20, 0));
-        cardsPanel.setOpaque(false);
-        // cardsPanel.setPreferredSize(new Dimension(700, 200)); // Removed fixed preferred size
-
-        // Start Quiz Card
-        JPanel startQuizCard = createCardBase(
-                "Start Quiz",
-                "Begin a new quiz challenge",
-                SECONDARY_COLOR
-        );
-        startQuizFlowButton = createStyledButton("Start Quiz", SECONDARY_COLOR);
-        startQuizFlowButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        startQuizFlowButton.addActionListener(e -> showCategorySelectionPanel());
-        startQuizCard.add(startQuizFlowButton);
-
-        // Profile Card
-        JPanel profileCard = createCardBase(
-                "Profile",
-                "View and edit your profile",
-                PRIMARY_COLOR
-        );
-        profileButton = createStyledButton("Profile", PRIMARY_COLOR);
-        profileButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        profileButton.addActionListener(e -> showProfilePanel());
-        profileCard.add(profileButton);
-
-        // Statistics Card
-        JPanel statsCard = createCardBase(
-                "Statistics",
-                "View your quiz performance",
-                ACCENT_COLOR
-        );
-        viewStatsButton = createStyledButton("Statistics", ACCENT_COLOR);
-        viewStatsButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        viewStatsButton.addActionListener(e -> showProfilePanel());
-        statsCard.add(viewStatsButton);
-
-        cardsPanel.add(startQuizCard);
-        cardsPanel.add(profileCard);
-        cardsPanel.add(statsCard);
-
-        centerPanel.add(cardsPanel);
-        welcomePanel.add(centerPanel, BorderLayout.CENTER);
-
-        // Footer section with Exit button
-        JPanel footerPanel = new JPanel(new BorderLayout());
-        footerPanel.setOpaque(false);
-        footerPanel.setBorder(new EmptyBorder(20, 0, 0, 0)); // Add some padding
-
-        JLabel footerLabel = new JLabel("Ready to test your knowledge?", SwingConstants.CENTER);
-        footerLabel.setFont(new Font("Arial", Font.ITALIC, 14));
-        footerLabel.setForeground(new Color(120, 120, 120));
-        footerPanel.add(footerLabel, BorderLayout.CENTER);
-
-        JPanel exitButtonWrapper = new JPanel(new FlowLayout(FlowLayout.RIGHT)); // Align to right
-        exitButtonWrapper.setOpaque(false);
-        exitButtonWrapper.add(exitButton);
-        footerPanel.add(exitButtonWrapper, BorderLayout.EAST);
-
-        welcomePanel.add(footerPanel, BorderLayout.SOUTH);
-    }
-
-    private void createCategoryPanel() {
-        categoryPanel = new JPanel(new BorderLayout());
-        categoryPanel.setBackground(BACKGROUND_COLOR);
-        categoryPanel.setBorder(new EmptyBorder(30, 30, 30, 30));
-
-        // Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setOpaque(false);
-
-        JLabel titleLabel = new JLabel("Choose Your Quiz Category", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 28));
-        titleLabel.setForeground(PRIMARY_COLOR);
-
-        JLabel subtitleLabel = new JLabel("Select a category to begin your quiz challenge", SwingConstants.CENTER);
-        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        subtitleLabel.setForeground(new Color(120, 120, 120));
-        subtitleLabel.setBorder(new EmptyBorder(10, 0, 0, 0));
-
-        JPanel titlePanel = new JPanel(new BorderLayout());
-        titlePanel.setOpaque(false);
-        titlePanel.add(titleLabel, BorderLayout.CENTER);
-        titlePanel.add(subtitleLabel, BorderLayout.SOUTH);
-
-        headerPanel.add(titlePanel, BorderLayout.CENTER);
-        categoryPanel.add(headerPanel, BorderLayout.NORTH);
-
-        // Center section with category selection
-        JPanel centerPanel = new JPanel(new GridBagLayout());
-        centerPanel.setOpaque(false);
-
-        JPanel selectionPanel = new JPanel();
-        selectionPanel.setLayout(new BoxLayout(selectionPanel, BoxLayout.Y_AXIS));
-        selectionPanel.setBackground(CARD_COLOR);
-        selectionPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
-                new EmptyBorder(30, 30, 30, 30)
-        ));
-        // selectionPanel.setPreferredSize(new Dimension(400, 250)); // Removed fixed preferred size
-
-        JLabel categoryLabel = new JLabel("Category:", SwingConstants.LEFT);
-        categoryLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        categoryLabel.setForeground(new Color(80, 80, 80));
-        categoryLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel categoryLabel = new JLabel("Choose a Category:");
+        categoryLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        categoryLabel.setForeground(PRIMARY_COLOR);
+        categoryLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         categoryComboBox = new JComboBox<>();
-        categoryComboBox.setFont(new Font("Arial", Font.PLAIN, 14));
-        categoryComboBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        categoryComboBox.setAlignmentX(Component.LEFT_ALIGNMENT);
-        categoryComboBox.setBorder(new EmptyBorder(5, 10, 5, 10));
+        categoryComboBox.setFont(new Font("Arial", Font.PLAIN, 16));
+        categoryComboBox.setMaximumSize(new Dimension(300, 40));
+        categoryComboBox.setAlignmentX(Component.CENTER_ALIGNMENT);
+        loadCategories(); // Populate categories
 
-        // Custom renderer for better appearance
-        categoryComboBox.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-                                                          boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                setBorder(new EmptyBorder(8, 12, 8, 12));
-                if (isSelected) {
-                    setBackground(PRIMARY_COLOR);
-                    setForeground(Color.WHITE);
-                }
-                return this;
-            }
-        });
-
-        startCategoryQuizButton = createStyledButton("Start Quiz", SECONDARY_COLOR);
-        startCategoryQuizButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        startCategoryQuizButton = createStyledButton("Start Quiz in Category", SECONDARY_COLOR);
         startCategoryQuizButton.addActionListener(e -> startCategoryQuiz());
 
-        backToWelcomeButtonCategory = createStyledButton("Back", new Color(108, 117, 125));
-        backToWelcomeButtonCategory.setAlignmentX(Component.CENTER_ALIGNMENT);
-        backToWelcomeButtonCategory.addActionListener(e -> showWelcomePanel());
+        JButton startRandomQuizButton = createStyledButton("Start Random Quiz", SECONDARY_COLOR);
+        startRandomQuizButton.addActionListener(e -> startRandomQuiz());
 
-        selectionPanel.add(categoryLabel);
-        selectionPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-        selectionPanel.add(categoryComboBox);
-        selectionPanel.add(Box.createRigidArea(new Dimension(0, 30)));
-        selectionPanel.add(startCategoryQuizButton);
-        selectionPanel.add(Box.createRigidArea(new Dimension(0, 15)));
-        selectionPanel.add(backToWelcomeButtonCategory);
+        backToWelcomeButton = createStyledButton("Back to Welcome", PRIMARY_COLOR);
+        backToWelcomeButton.addActionListener(e -> showWelcomePanel());
 
-        centerPanel.add(selectionPanel);
-        categoryPanel.add(centerPanel, BorderLayout.CENTER);
-
-        // Add Exit button to the bottom of the category panel
-        JPanel categoryFooterPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        categoryFooterPanel.setOpaque(false);
-        categoryFooterPanel.setBorder(new EmptyBorder(20, 0, 0, 0));
-        categoryFooterPanel.add(exitButton);
-        categoryPanel.add(categoryFooterPanel, BorderLayout.SOUTH);
-
-        loadCategories();
+        categoryPanel.add(Box.createVerticalGlue());
+        categoryPanel.add(categoryLabel);
+        categoryPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        categoryPanel.add(categoryComboBox);
+        categoryPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        categoryPanel.add(startCategoryQuizButton);
+        categoryPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        categoryPanel.add(startRandomQuizButton);
+        categoryPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        categoryPanel.add(backToWelcomeButton);
+        categoryPanel.add(Box.createVerticalGlue());
     }
 
-    private void createQuizPanel() {
-        quizPanel = new JPanel(new BorderLayout(15, 15));
-        quizPanel.setBackground(BACKGROUND_COLOR);
-        quizPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+    private void setupQuizPanel() {
+        quizPanel = new JPanel(new BorderLayout(20, 20));
+        quizPanel.setBorder(new EmptyBorder(30, 30, 30, 30));
+        quizPanel.setBackground(CARD_COLOR);
 
-        // Top Panel for Timers and Exit Button
-        JPanel topControlPanel = new JPanel(new BorderLayout());
-        topControlPanel.setOpaque(false);
-        topControlPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        questionLabel = new JLabel("Question text goes here.", SwingConstants.CENTER);
+        questionLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        questionLabel.setForeground(TEXT_COLOR);
+        questionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JPanel timerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        timerPanel.setOpaque(false);
-        sessionTimerLabel = new JLabel("Session Time: 0:00", SwingConstants.LEFT);
-        sessionTimerLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        sessionTimerLabel.setForeground(PRIMARY_COLOR);
-        timerPanel.add(sessionTimerLabel);
-
-        questionTimerLabel = new JLabel("Question Time: 0:30", SwingConstants.RIGHT);
-        questionTimerLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        questionTimerLabel.setForeground(ACCENT_COLOR);
-        timerPanel.add(questionTimerLabel);
-
-        topControlPanel.add(timerPanel, BorderLayout.WEST);
-
-        JPanel exitButtonQuizWrapper = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        exitButtonQuizWrapper.setOpaque(false);
-        exitButtonQuizWrapper.add(exitButton);
-        topControlPanel.add(exitButtonQuizWrapper, BorderLayout.EAST);
-
-        quizPanel.add(topControlPanel, BorderLayout.NORTH);
-
-
-        // Center Panel for Question and Options
-        JPanel questionPanel = new JPanel(new BorderLayout());
-        questionPanel.setBackground(CARD_COLOR);
-        questionPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
-                new EmptyBorder(25, 25, 25, 25)
-        ));
-
-        // Question text
-        questionLabel = new JLabel("Question will appear here", SwingConstants.LEFT);
-        questionLabel.setFont(new Font("Arial", Font.PLAIN, 18));
-        questionLabel.setForeground(Color.BLACK); // Set question color to black
-        questionLabel.setBorder(new EmptyBorder(0, 0, 25, 0));
-        questionPanel.add(questionLabel, BorderLayout.NORTH);
-
-        // Options panel
         JPanel optionsPanel = new JPanel();
         optionsPanel.setLayout(new BoxLayout(optionsPanel, BoxLayout.Y_AXIS));
-        optionsPanel.setOpaque(false);
+        optionsPanel.setBackground(CARD_COLOR);
+        optionsPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
 
         optionsGroup = new ButtonGroup();
-        Font optionFont = new Font("Arial", Font.PLAIN, 16);
-
-        optionA = createStyledRadioButton("A. Option A", optionFont);
-        optionB = createStyledRadioButton("B. Option B", optionFont);
-        optionC = createStyledRadioButton("C. Option C", optionFont);
-        optionD = createStyledRadioButton("D. Option D", optionFont);
+        optionA = createOptionRadioButton("A) Option A");
+        optionB = createOptionRadioButton("B) Option B");
+        optionC = createOptionRadioButton("C) Option C");
+        optionD = createOptionRadioButton("D) Option D");
 
         optionsGroup.add(optionA);
         optionsGroup.add(optionB);
@@ -415,384 +240,245 @@ public class GameFrame extends JFrame {
         optionsGroup.add(optionD);
 
         optionsPanel.add(optionA);
-        optionsPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         optionsPanel.add(optionB);
-        optionsPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         optionsPanel.add(optionC);
-        optionsPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         optionsPanel.add(optionD);
 
-        questionPanel.add(optionsPanel, BorderLayout.CENTER);
-        quizPanel.add(questionPanel, BorderLayout.CENTER);
+        submitButton = createStyledButton("Submit Answer", SECONDARY_COLOR);
+        submitButton.addActionListener(e -> handleAnswerSubmission());
+        submitButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Bottom Panel for Navigation
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setOpaque(false);
-        bottomPanel.setBorder(new EmptyBorder(20, 0, 0, 0));
+        timerLabel = new JLabel("Time: 00:00", SwingConstants.RIGHT);
+        timerLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        timerLabel.setForeground(ACCENT_COLOR);
 
-        JLabel progressLabel = new JLabel("Question 1 of 10", SwingConstants.LEFT);
-        progressLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        progressLabel.setForeground(new Color(120, 120, 120));
-
-        nextButton = createStyledButton("Next Question", PRIMARY_COLOR);
-        nextButton.addActionListener(e -> processAnswer());
-
-        bottomPanel.add(progressLabel, BorderLayout.WEST);
-        bottomPanel.add(nextButton, BorderLayout.EAST);
-        quizPanel.add(bottomPanel, BorderLayout.SOUTH);
+        quizPanel.add(questionLabel, BorderLayout.NORTH);
+        quizPanel.add(optionsPanel, BorderLayout.CENTER);
+        JPanel southPanel = new JPanel(new BorderLayout());
+        southPanel.setBackground(CARD_COLOR);
+        southPanel.add(submitButton, BorderLayout.CENTER);
+        southPanel.add(timerLabel, BorderLayout.EAST);
+        quizPanel.add(southPanel, BorderLayout.SOUTH);
     }
 
-    private JRadioButton createStyledRadioButton(String text, Font font) {
+    private JRadioButton createOptionRadioButton(String text) {
         JRadioButton radioButton = new JRadioButton(text);
-        radioButton.setFont(font);
-        radioButton.setOpaque(false);
-        radioButton.setForeground(new Color(60, 60, 60));
-        radioButton.setBorder(new EmptyBorder(8, 5, 8, 5));
-        radioButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        // Add hover effect
-        radioButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                if (!radioButton.isSelected()) {
-                    radioButton.setForeground(PRIMARY_COLOR);
-                }
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                if (!radioButton.isSelected()) {
-                    radioButton.setForeground(new Color(60, 60, 60));
-                }
-            }
-        });
-
+        radioButton.setFont(new Font("Arial", Font.PLAIN, 16));
+        radioButton.setBackground(CARD_COLOR);
+        radioButton.setForeground(TEXT_COLOR);
+        radioButton.setFocusPainted(false);
+        radioButton.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         return radioButton;
     }
 
     private JButton createStyledButton(String text, Color bgColor) {
         JButton button = new JButton(text);
-        button.setFont(new Font("Arial", Font.BOLD, 14));
+        button.setFont(new Font("Arial", Font.BOLD, 16));
         button.setBackground(bgColor);
         button.setForeground(Color.WHITE);
-        button.setBorder(new EmptyBorder(12, 24, 12, 24));
         button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(bgColor.darker(), 1),
+                BorderFactory.createEmptyBorder(10, 25, 10, 25)
+        ));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        // Add hover effect
-        button.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(bgColor.brighter());
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(bgColor);
-            }
-        });
-
+        button.setMaximumSize(new Dimension(300, 50)); // Fixed size for consistency
         return button;
     }
 
+    // --- Navigation Methods ---
     public void showWelcomePanel() {
-        // Update welcome label in case username was changed in profile
-        welcomeLabel.setText("Welcome back, " + currentUser.getUsername() + "!");
         cardLayout.show(cardPanel, "Welcome");
+        updateWelcomeLabel();
     }
 
-    private void showCategorySelectionPanel() {
-        cardLayout.show(cardPanel, "CategorySelection");
-    }
-
-    private void showQuizPanel() {
+    public void showQuizPanel() {
         cardLayout.show(cardPanel, "Quiz");
-        startQuizSession();
+        startQuizTimer();
     }
 
-    // New method to create and manage the ProfileFrame as a card
-    private void createProfileView() {
-        profilePanel = new ProfileFrame(currentUser, userDAO, this, exitButton); // Pass exitButton
-        // Add the back to game button listener directly within ProfileFrame,
-        // which now calls GameFrame.showWelcomePanel()
-    }
-
-    private void showProfilePanel() {
-        // When showing the profile panel, refresh its data
-        profilePanel.loadUserData(); // Ensure it loads the latest user data
-        profilePanel.loadStatistics(); // Ensure it loads the latest statistics
+    public void showProfilePanel() {
+        ProfileFrame profileFrame = new ProfileFrame(currentUser, userDAO, this, exitButton);
+        cardPanel.add(profileFrame, "Profile");
         cardLayout.show(cardPanel, "Profile");
+        // Optionally, call a method on profileFrame to load data if it needs to refresh
+        profileFrame.loadUserProfileData(); // Make sure this method exists in ProfileFrame
     }
 
-    private void loadCategories() {
-        CategoryDAO categoryDAO = new CategoryDAO();
+    public void showDashboardPanel() {
+        // Assuming DashboardFrame will be a JPanel to fit into CardLayout
+        // For simplicity, let's reuse ProfileFrame structure for now or create a basic one
+        // A dedicated DashboardFrame/Panel would be ideal
+        JPanel dashboardPanel = new JPanel(); // Placeholder
+        dashboardPanel.setLayout(new BorderLayout());
+        dashboardPanel.setBorder(new EmptyBorder(50, 50, 50, 50));
+        dashboardPanel.setBackground(CARD_COLOR);
+
+        JLabel dashboardTitle = new JLabel("User Dashboard", SwingConstants.CENTER);
+        dashboardTitle.setFont(new Font("Arial", Font.BOLD, 28));
+        dashboardTitle.setForeground(PRIMARY_COLOR);
+        dashboardPanel.add(dashboardTitle, BorderLayout.NORTH);
+
+        JLabel levelLabel = new JLabel("Loading user level...", SwingConstants.CENTER);
+        levelLabel.setFont(new Font("Arial", Font.PLAIN, 20));
+        levelLabel.setForeground(TEXT_COLOR);
+        dashboardPanel.add(levelLabel, BorderLayout.CENTER);
+
+        JButton backButton = createStyledButton("Back to Welcome", PRIMARY_COLOR);
+        backButton.addActionListener(e -> showWelcomePanel());
+        JPanel southPanel = new JPanel();
+        southPanel.setBackground(CARD_COLOR);
+        southPanel.add(backButton);
+        dashboardPanel.add(southPanel, BorderLayout.SOUTH);
+
+        cardPanel.add(dashboardPanel, "Dashboard");
+        cardLayout.show(cardPanel, "Dashboard");
+
+        // Initialize and use DashboardController
+        this.dashboardController = new DashboardController(analyticsDAO, currentUser, levelLabel);
+        dashboardController.updateDashboard();
+    }
+
+
+    // --- Quiz Logic (Delegated to QuizController) ---
+    private void startRandomQuiz() {
         try {
-            List<Category> categories = categoryDAO.getAllCategories();
-            categoryComboBox.removeAllItems();
-            for (Category category : categories) {
-                categoryComboBox.addItem(category);
-            }
-            if (categories.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "No quiz categories found in the database.",
-                        "No Categories",
-                        JOptionPane.INFORMATION_MESSAGE);
-                startCategoryQuizButton.setEnabled(false);
-            } else {
-                startCategoryQuizButton.setEnabled(true);
-            }
+            quizController.startQuiz(currentUser.getId(), "random", 10, -1); // 10 questions, no category
+            this.questions = quizController.getQuestions();
+            this.quizSessionId = quizController.getQuizSessionId();
+            this.currentQuestionIndex = 0;
+            this.score = 0;
+            loadQuestion();
+            showQuizPanel();
         } catch (DatabaseException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Error loading categories: " + ex.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
-            startCategoryQuizButton.setEnabled(false);
+            JOptionPane.showMessageDialog(this, "Error starting random quiz: " + ex.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void startCategoryQuiz() {
         Category selectedCategory = (Category) categoryComboBox.getSelectedItem();
-        if (selectedCategory != null) {
-            try {
-                QuestionDAO questionDAO = new QuestionDAO();
-                int numberOfQuestions = 10;
-                questions = questionDAO.getQuestionsByCategory(selectedCategory.getId(), numberOfQuestions);
-
-                if (questions.isEmpty()) {
-                    JOptionPane.showMessageDialog(this,
-                            "No questions found for the selected category (" + selectedCategory.getName() +
-                                    "). Please choose another category.",
-                            "No Questions",
-                            JOptionPane.INFORMATION_MESSAGE);
-                    return;
-                }
-
-                currentQuestionIndex = 0;
-                score = 0;
-                totalSessionTimeElapsed = 0;
-                showQuizPanel();
-            } catch (DatabaseException ex) {
-                JOptionPane.showMessageDialog(this,
-                        "Error loading questions for category: " + ex.getMessage(),
-                        "Database Error",
-                        JOptionPane.ERROR_MESSAGE);
-                ex.printStackTrace();
-            }
-        } else {
-            JOptionPane.showMessageDialog(this,
-                    "Please select a category before starting the quiz.",
-                    "No Category Selected",
-                    JOptionPane.WARNING_MESSAGE);
-        }
-    }
-
-    private void startQuizSession() {
-        QuizSessionDAO quizSessionDAO = new QuizSessionDAO();
-        Category selectedCategory = (Category) categoryComboBox.getSelectedItem();
-        String sessionType = (selectedCategory != null) ? selectedCategory.getName() : "General Quiz"; // Use category name
-        QuizSession newSession = new QuizSession(currentUser.getId(), questions.size(), sessionType);
-
-        try {
-            quizSessionId = quizSessionDAO.createQuizSession(newSession);
-        } catch (DatabaseException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Error creating quiz session: " + ex.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
-            endQuiz();
+        if (selectedCategory == null) {
+            JOptionPane.showMessageDialog(this, "Please select a category.", "No Category Selected", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
-        // Start session timer
-        sessionTimer = new Timer(1000, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                totalSessionTimeElapsed++;
-                int minutes = totalSessionTimeElapsed / 60;
-                int seconds = totalSessionTimeElapsed % 60;
-                sessionTimerLabel.setText(String.format("Session Time: %d:%02d", minutes, seconds));
-            }
-        });
-        sessionTimer.start();
-
-        showQuestion();
+        try {
+            quizController.startQuiz(currentUser.getId(), "category", 10, selectedCategory.getId());
+            this.questions = quizController.getQuestions();
+            this.quizSessionId = quizController.getQuizSessionId();
+            this.currentQuestionIndex = 0;
+            this.score = 0;
+            loadQuestion();
+            showQuizPanel();
+        } catch (DatabaseException ex) {
+            JOptionPane.showMessageDialog(this, "Error starting category quiz: " + ex.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-    private void showQuestion() {
-        if (questionTimer != null) {
-            questionTimer.stop();
-        }
-        optionsGroup.clearSelection();
-
-        Question q = questions.get(currentQuestionIndex);
-        questionLabel.setText("<html><p style='line-height:1.4;'>" + q.getText() + "</p></html>");
-        optionA.setText("A. " + q.getOptionA());
-        optionB.setText("B. " + q.getOptionB());
-        optionC.setText("C. " + q.getOptionC());
-        optionD.setText("D. " + q.getOptionD());
-
-        // Update progress
-        // These lines are outside the scope of the original error but are good practice to ensure component access is safe.
-        // If these lines also cause issues, a similar refactoring to ensure direct references would be ideal.
-        // Since quizPanel.getComponent(2) might return different components based on layout changes,
-        // it's safer to directly access a JLabel if it's a field, or find it by name/iterate if needed.
-        // For now, assuming progressLabel is a direct child of bottomPanel (which is part of quizPanel)
-        // If progressLabel was a field, this could be simplified.
-        JPanel bottomPanel = (JPanel) quizPanel.getComponent(2); // Assuming it's still at index 2
-        // It's better to declare progressLabel as a field in GameFrame to avoid this casting.
-        // For this example, I'm just adapting to the existing structure.
-        JLabel progressLabel = (JLabel) bottomPanel.getComponent(0); // Assuming it's the first component in bottomPanel
-        progressLabel.setText("Question " + (currentQuestionIndex + 1) + " of " + questions.size());
-
-
-        // Update next button text
-        if (currentQuestionIndex == questions.size() - 1) {
-            nextButton.setText("Finish Quiz");
+    private void loadQuestion() {
+        if (currentQuestionIndex < questions.size()) {
+            Question currentQuestion = questions.get(currentQuestionIndex);
+            questionLabel.setText("<html><body style='text-align: center;'>" + currentQuestion.getText() + "</body></html>"); // Center align question text
+            optionA.setText("A) " + currentQuestion.getOptionA());
+            optionB.setText("B) " + currentQuestion.getOptionB());
+            optionC.setText("C) " + currentQuestion.getOptionC());
+            optionD.setText("D) " + currentQuestion.getOptionD());
+            optionsGroup.clearSelection();
+            questionStartTime = System.currentTimeMillis();
         } else {
-            nextButton.setText("Next Question");
-        }
-
-        questionStartTime = System.currentTimeMillis();
-        timeLeftForQuestion = 30;
-        updateQuestionTimer();
-        startQuestionTimer();
-    }
-
-    private void startQuestionTimer() {
-        if (questionTimer != null) {
-            questionTimer.stop();
-        }
-        questionTimer = new Timer(1000, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                timeLeftForQuestion--;
-                updateQuestionTimer();
-
-                if (timeLeftForQuestion <= 0) {
-                    questionTimer.stop();
-                    JOptionPane.showMessageDialog(GameFrame.this,
-                            "Time's up for this question!",
-                            "Time Up",
-                            JOptionPane.WARNING_MESSAGE);
-                    processAnswer();
-                }
-            }
-        });
-        questionTimer.start();
-    }
-
-    private void updateQuestionTimer() {
-        int minutes = timeLeftForQuestion / 60;
-        int seconds = timeLeftForQuestion % 60;
-        questionTimerLabel.setText(String.format("Question Time: %d:%02d", minutes, seconds));
-
-        // Change color as time runs out
-        if (timeLeftForQuestion <= 10) {
-            questionTimerLabel.setForeground(ERROR_COLOR);
-        } else {
-            questionTimerLabel.setForeground(ACCENT_COLOR);
+            // This case should ideally not be reached if finishQuiz is called correctly
+            finishQuiz();
         }
     }
 
-    private void processAnswer() {
-        if (questionTimer != null) {
-            questionTimer.stop();
-        }
-
+    private void handleAnswerSubmission() {
         char selectedOption = ' ';
         if (optionA.isSelected()) selectedOption = 'A';
         else if (optionB.isSelected()) selectedOption = 'B';
         else if (optionC.isSelected()) selectedOption = 'C';
         else if (optionD.isSelected()) selectedOption = 'D';
 
+        if (selectedOption == ' ') {
+            JOptionPane.showMessageDialog(this, "Please select an answer.", "No Answer Selected", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        long timeTaken = System.currentTimeMillis() - questionStartTime;
         Question currentQuestion = questions.get(currentQuestionIndex);
         boolean isCorrect = (selectedOption == currentQuestion.getCorrectOption());
+
         if (isCorrect) {
             score++;
         }
 
-        long timeTakenForQuestion = (System.currentTimeMillis() - questionStartTime) / 1000;
-
-        ScoreDAO scoreDAO = new ScoreDAO();
         try {
-            scoreDAO.saveScore(currentUser.getId(), quizSessionId, currentQuestion.getId(),
-                    selectedOption, isCorrect, (int) timeTakenForQuestion);
+            quizController.handleAnswerSubmission(currentUser.getId(), quizSessionId, currentQuestion.getId(), selectedOption, isCorrect, (int) timeTaken);
         } catch (DatabaseException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Error saving question score: " + ex.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error saving score: " + ex.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
         }
 
         currentQuestionIndex++;
         if (currentQuestionIndex < questions.size()) {
-            showQuestion();
+            loadQuestion();
         } else {
-            endQuiz();
+            finishQuiz();
         }
     }
 
-    private void endQuiz() {
-        if (sessionTimer != null) {
-            sessionTimer.stop();
-        }
-        if (questionTimer != null) {
-            questionTimer.stop();
-        }
+    private void finishQuiz() {
+        stopQuizTimer();
+        int totalQuestions = questions.size();
+        double percentage = (double) score / totalQuestions * 100;
+        int totalTimeTaken = timeElapsed; // Use the total time from the timer
 
-        QuizSessionDAO quizSessionDAO = new QuizSessionDAO();
         try {
-            quizSessionDAO.completeQuizSession(quizSessionId, score, score * 10, totalSessionTimeElapsed);
-
-            // Create a nice results dialog
-            showQuizResultsDialog();
-
-            showWelcomePanel();
+            quizController.finishQuiz(quizSessionId, score, totalTimeTaken);
         } catch (DatabaseException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Error completing quiz session: " + ex.getMessage(),
-                    "Database Error",
-                    JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
-            showWelcomePanel();
+            JOptionPane.showMessageDialog(this, "Error completing quiz session: " + ex.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
         }
+
+        showQuizResultsDialog(score, totalQuestions, totalTimeTaken, percentage);
+        showNewAchievements(); // This will trigger achievement display
+        updateDashboardFromGameFrame(); // Update dashboard after quiz
     }
 
-    private void showQuizResultsDialog() {
+    private void showQuizResultsDialog(int score, int totalQuestions, int totalTimeMillis, double percentage) {
         JDialog resultsDialog = new JDialog(this, "Quiz Results", true);
+        resultsDialog.setLayout(new BorderLayout());
         resultsDialog.setSize(400, 300);
         resultsDialog.setLocationRelativeTo(this);
-        resultsDialog.setLayout(new BorderLayout());
+        resultsDialog.getContentPane().setBackground(BACKGROUND_COLOR);
 
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-        contentPanel.setBorder(new EmptyBorder(30, 30, 30, 30));
+        contentPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         contentPanel.setBackground(CARD_COLOR);
 
-        JLabel titleLabel = new JLabel("Quiz Complete!", SwingConstants.CENTER);
+        JLabel titleLabel = new JLabel("Quiz Completed!", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        titleLabel.setForeground(SECONDARY_COLOR);
+        titleLabel.setForeground(PRIMARY_COLOR);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        double percentage = (double) score / questions.size() * 100;
-        JLabel scoreLabel = new JLabel(String.format("Score: %d/%d (%.1f%%)", score, questions.size(), percentage), SwingConstants.CENTER);
-        scoreLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        scoreLabel.setForeground(PRIMARY_COLOR);
+        JLabel scoreLabel = new JLabel(String.format("You scored: %d / %d (%.1f%%)", score, totalQuestions, percentage), SwingConstants.CENTER);
+        scoreLabel.setFont(new Font("Arial", Font.PLAIN, 18));
+        scoreLabel.setForeground(TEXT_COLOR);
         scoreLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        int minutes = totalSessionTimeElapsed / 60;
-        int seconds = totalSessionTimeElapsed % 60;
-        JLabel timeLabel = new JLabel(String.format("Time: %d:%02d", minutes, seconds), SwingConstants.CENTER);
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(totalTimeMillis);
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(totalTimeMillis) - TimeUnit.MINUTES.toSeconds(minutes);
+        JLabel timeLabel = new JLabel(String.format("Total Time: %02d:%02d", minutes, seconds), SwingConstants.CENTER);
         timeLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        timeLabel.setForeground(new Color(100, 100, 100));
+        timeLabel.setForeground(ACCENT_COLOR);
         timeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         String performanceMessage;
         if (percentage >= 90) {
-            performanceMessage = "Excellent work!";
+            performanceMessage = "🏆 Excellent work!";
         } else if (percentage >= 70) {
-            performanceMessage = "Good job!";
+            performanceMessage = "👍 Good job!";
         } else if (percentage >= 50) {
-            performanceMessage = "Not bad!";
+            performanceMessage = "👌 Not bad!";
         } else {
-            performanceMessage = "Keep studying!";
+            performanceMessage = "📚 Keep studying!";
         }
 
         JLabel performanceLabel = new JLabel(performanceMessage, SwingConstants.CENTER);
@@ -802,7 +488,10 @@ public class GameFrame extends JFrame {
 
         JButton okButton = createStyledButton("OK", PRIMARY_COLOR);
         okButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        okButton.addActionListener(e -> resultsDialog.dispose());
+        okButton.addActionListener(e -> {
+            resultsDialog.dispose();
+            showWelcomePanel(); // Go back to welcome panel after results
+        });
 
         contentPanel.add(titleLabel);
         contentPanel.add(Box.createRigidArea(new Dimension(0, 20)));
@@ -816,5 +505,66 @@ public class GameFrame extends JFrame {
 
         resultsDialog.add(contentPanel, BorderLayout.CENTER);
         resultsDialog.setVisible(true);
+    }
+
+    private void showNewAchievements() {
+        try {
+            List<quiz.model.Achievement> newAchievements = achievementDAO.getUserAchievements(currentUser.getId()); // Re-fetch all achievements to see new ones
+            if (!newAchievements.isEmpty()) {
+                StringBuilder sb = new StringBuilder("Congratulations! You've earned new achievements:\n");
+                for (quiz.model.Achievement ach : newAchievements) {
+                    sb.append("- ").append(ach.getAchievementName()).append(": ").append(ach.getDescription()).append("\n");
+                }
+                JOptionPane.showMessageDialog(this, sb.toString(), "New Achievements!", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (DatabaseException e) {
+            JOptionPane.showMessageDialog(this, "Error fetching achievements: " + e.getMessage(), "Achievement Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void updateWelcomeLabel() {
+        welcomeLabel.setText("Welcome, " + currentUser.getUsername() + "!");
+    }
+
+    private void updateDashboardFromGameFrame() {
+        // This is a placeholder. In a real app, you might refresh the dashboard
+        // if it's currently visible, or ensure it loads fresh data when next viewed.
+        System.out.println("Dashboard data needs to be refreshed.");
+    }
+
+
+    private void loadCategories() {
+        try {
+            List<Category> categories = categoryDAO.getAllCategories();
+            categoryComboBox.removeAllItems(); // Clear existing items
+            for (Category category : categories) {
+                categoryComboBox.addItem(category);
+            }
+        } catch (DatabaseException e) {
+            JOptionPane.showMessageDialog(this, "Error loading categories: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void startQuizTimer() {
+        timeElapsed = 0; // Reset total time
+        if (quizTimer != null && quizTimer.isRunning()) {
+            quizTimer.stop();
+        }
+        quizTimer = new Timer(1000, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                timeElapsed++;
+                long minutes = timeElapsed / 60;
+                long seconds = timeElapsed % 60;
+                timerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
+            }
+        });
+        quizTimer.start();
+    }
+
+    private void stopQuizTimer() {
+        if (quizTimer != null && quizTimer.isRunning()) {
+            quizTimer.stop();
+        }
     }
 }

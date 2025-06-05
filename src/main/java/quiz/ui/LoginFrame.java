@@ -37,203 +37,140 @@ public class LoginFrame extends JFrame {
 
     private void setupFrame() {
         setTitle("QuizMaster - Login");
-        // setSize(450, 550); // Removed fixed size
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setLocationRelativeTo(null); // Center on screen (before maximizing)
-        setExtendedState(JFrame.MAXIMIZED_BOTH); // Set to fullscreen
-        setResizable(true);
-        setLayout(new BorderLayout()); // Use BorderLayout for consistent layout
+        setSize(450, 550);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null); // Center the window
+        setResizable(false);
+        getContentPane().setBackground(BACKGROUND_COLOR);
     }
 
     private void initializeComponents() {
-        // Create a main panel to hold all components
-        JPanel mainPanel = new JPanel(new GridBagLayout());
-        mainPanel.setBackground(BACKGROUND_COLOR);
-        mainPanel.setBorder(new EmptyBorder(50, 50, 50, 50)); // Padding
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(new EmptyBorder(50, 40, 50, 40));
+        panel.setBackground(CARD_COLOR);
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 0, 10, 0); // Padding between components
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.gridwidth = GridBagConstraints.REMAINDER; // Each component takes a new row
-
-        // Title
-        JLabel titleLabel = new JLabel("Welcome to QuizMaster", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 32));
+        JLabel titleLabel = new JLabel("Welcome to QuizMaster!");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 28));
         titleLabel.setForeground(PRIMARY_COLOR);
-        gbc.gridy = 0;
-        mainPanel.add(titleLabel, gbc);
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Subtitle/Welcome message
-        JLabel subtitleLabel = new JLabel("Login to continue", SwingConstants.CENTER);
+        JLabel subtitleLabel = new JLabel("Please log in to continue");
         subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 16));
         subtitleLabel.setForeground(new Color(100, 100, 100));
-        gbc.gridy = 1;
-        mainPanel.add(subtitleLabel, gbc);
+        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Spacer
-        gbc.insets = new Insets(20, 0, 20, 0); // More space before fields
-        gbc.gridy = 2;
-        mainPanel.add(Box.createVerticalStrut(1), gbc); // Invisible component for spacing
-
-        // Username Field
-        JLabel usernameLabel = new JLabel("Username:");
-        usernameLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        usernameLabel.setForeground(new Color(80, 80, 80));
-        gbc.gridy = 3;
-        mainPanel.add(usernameLabel, gbc);
-
-        usernameField = new JTextField(20);
-        usernameField.setFont(new Font("Arial", Font.PLAIN, 16));
-        usernameField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
-                new EmptyBorder(8, 10, 8, 10)
-        ));
-        gbc.gridy = 4;
-        mainPanel.add(usernameField, gbc);
-
-        // Password Field
-        JLabel passwordLabel = new JLabel("Password:");
-        passwordLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        passwordLabel.setForeground(new Color(80, 80, 80));
-        gbc.gridy = 5;
-        mainPanel.add(passwordLabel, gbc);
-
-        passwordField = new JPasswordField(20);
-        passwordField.setFont(new Font("Arial", Font.PLAIN, 16));
-        passwordField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
-                new EmptyBorder(8, 10, 8, 10)
-        ));
-        gbc.gridy = 6;
-        mainPanel.add(passwordField, gbc);
-
-        // Status Label
-        statusLabel = new JLabel(" ", SwingConstants.CENTER);
-        statusLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        statusLabel.setForeground(ERROR_COLOR);
-        gbc.insets = new Insets(10, 0, 10, 0); // Reset insets
-        gbc.gridy = 7;
-        mainPanel.add(statusLabel, gbc);
-
-        // Buttons Panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0)); // FlowLayout to center buttons
-        buttonPanel.setOpaque(false);
+        usernameField = createStyledTextField("Username");
+        passwordField = createStyledPasswordField("Password");
 
         loginButton = createStyledButton("Login", PRIMARY_COLOR);
         registerButton = createStyledButton("Register", SECONDARY_COLOR);
+        exitButton = createStyledButton("Exit", ERROR_COLOR); // Initialize exit button
 
-        buttonPanel.add(loginButton);
-        buttonPanel.add(registerButton);
+        statusLabel = new JLabel(" ", SwingConstants.CENTER);
+        statusLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        gbc.gridy = 8;
-        gbc.fill = GridBagConstraints.NONE; // Don't stretch buttons
-        mainPanel.add(buttonPanel, gbc);
+        panel.add(titleLabel);
+        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+        panel.add(subtitleLabel);
+        panel.add(Box.createRigidArea(new Dimension(0, 40)));
+        panel.add(usernameField);
+        panel.add(Box.createRigidArea(new Dimension(0, 15)));
+        panel.add(passwordField);
+        panel.add(Box.createRigidArea(new Dimension(0, 30)));
+        panel.add(loginButton);
+        panel.add(Box.createRigidArea(new Dimension(0, 15)));
+        panel.add(registerButton);
+        panel.add(Box.createRigidArea(new Dimension(0, 15)));
+        panel.add(exitButton); // Add exit button to panel
+        panel.add(Box.createRigidArea(new Dimension(0, 20)));
+        panel.add(statusLabel);
 
-        // Exit Button
-        exitButton = createStyledButton("Exit", ERROR_COLOR);
-        exitButton.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(this,
-                    "Are you sure you want to exit the application?",
-                    "Exit Application",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE);
-            if (confirm == JOptionPane.YES_OPTION) {
-                System.exit(0);
+        add(panel);
+    }
+
+    private void setupEventListeners() {
+        loginButton.addActionListener(e -> login());
+        registerButton.addActionListener(e -> showRegisterFrame());
+        exitButton.addActionListener(e -> System.exit(0)); // Exit application on click
+
+        // Add KeyListener for Enter key on password field
+        KeyListener enterKeyListener = new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent e) {}
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    login();
+                }
             }
-        });
-        JPanel exitButtonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        exitButtonPanel.setOpaque(false);
-        exitButtonPanel.setBorder(new EmptyBorder(20, 0, 0, 0)); // Padding above button
-        exitButtonPanel.add(exitButton);
 
-        // Add mainPanel to the center of the frame
-        add(mainPanel, BorderLayout.CENTER);
-        add(exitButtonPanel, BorderLayout.SOUTH); // Add exit button to the bottom
+            @Override
+            public void keyReleased(KeyEvent e) {}
+        };
+        usernameField.addKeyListener(enterKeyListener);
+        passwordField.addKeyListener(enterKeyListener);
+    }
+
+    private JTextField createStyledTextField(String placeholder) {
+        JTextField field = new JTextField(placeholder);
+        field.setFont(new Font("Arial", Font.PLAIN, 16));
+        field.setMaximumSize(new Dimension(300, 40));
+        field.setAlignmentX(Component.CENTER_ALIGNMENT);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(PRIMARY_COLOR.brighter(), 1),
+                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+        ));
+        field.putClientProperty("JTextField.placeholderText", placeholder); // For modern look & feel if supported
+        return field;
+    }
+
+    private JPasswordField createStyledPasswordField(String placeholder) {
+        JPasswordField field = new JPasswordField(placeholder);
+        field.setFont(new Font("Arial", Font.PLAIN, 16));
+        field.setMaximumSize(new Dimension(300, 40));
+        field.setAlignmentX(Component.CENTER_ALIGNMENT);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(PRIMARY_COLOR.brighter(), 1),
+                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+        ));
+        field.putClientProperty("JTextField.placeholderText", placeholder); // For modern look & feel if supported
+        return field;
     }
 
     private JButton createStyledButton(String text, Color bgColor) {
         JButton button = new JButton(text);
-        button.setFont(new Font("Arial", Font.BOLD, 14));
+        button.setFont(new Font("Arial", Font.BOLD, 16));
         button.setBackground(bgColor);
         button.setForeground(Color.WHITE);
-        button.setBorder(new EmptyBorder(12, 24, 12, 24));
         button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(bgColor.darker(), 1),
+                BorderFactory.createEmptyBorder(10, 25, 10, 25)
+        ));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        // Add hover effect
-        button.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(bgColor.brighter());
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(bgColor);
-            }
-        });
-
+        button.setMaximumSize(new Dimension(300, 50));
+        button.setAlignmentX(Component.CENTER_ALIGNMENT);
         return button;
     }
 
-    private void setupEventListeners() {
-        loginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                loginUser();
-            }
-        });
-
-        registerButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                showRegisterFrame();
-            }
-        });
-
-        // Allow pressing Enter in password field to log in
-        passwordField.addKeyListener(new KeyListener() {
-            @Override
-            public void keyTyped(KeyEvent e) {}
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    loginUser();
-                }
-            }
-            @Override
-            public void keyReleased(KeyEvent e) {}
-        });
-
-        // Allow pressing Enter in username field to focus password field or log in
-        usernameField.addKeyListener(new KeyListener() {
-            @Override
-            public void keyTyped(KeyEvent e) {}
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    if (usernameField.getText().isEmpty()) {
-                        showStatusMessage("Username cannot be empty.", ERROR_COLOR);
-                    } else {
-                        passwordField.requestFocus();
-                    }
-                }
-            }
-            @Override
-            public void keyReleased(KeyEvent e) {}
-        });
-    }
-
-    private void loginUser() {
-        String username = usernameField.getText().trim();
+    private void login() {
+        String username = usernameField.getText();
         String password = new String(passwordField.getPassword());
 
         if (username.isEmpty() || password.isEmpty()) {
-            showStatusMessage("Please enter both username and password.", ERROR_COLOR);
+            showStatusMessage("Username and password are required.", ERROR_COLOR);
             return;
         }
 
-        // Use SwingWorker for background login process
+        showStatusMessage("Logging in...", PRIMARY_COLOR);
+
+        // Use SwingWorker for background login operation
         SwingWorker<User, Void> loginWorker = new SwingWorker<User, Void>() {
             @Override
-            protected User doInBackground() throws Exception {
+            protected User doInBackground() throws DatabaseException {
                 UserDAO userDAO = new UserDAO();
                 return userDAO.login(username, password);
             }
@@ -241,11 +178,15 @@ public class LoginFrame extends JFrame {
             @Override
             protected void done() {
                 try {
-                    User loggedInUser = get();
-                    if (loggedInUser != null) {
-                        showStatusMessage("Login successful! Redirecting...", SECONDARY_COLOR);
-                        dispose(); // Close login frame
-                        new GameFrame(loggedInUser).setVisible(true); // Open game frame
+                    User authenticatedUser = get(); // Get the result from doInBackground
+                    if (authenticatedUser != null) {
+                        showStatusMessage("Login successful! Welcome, " + authenticatedUser.getUsername() + "!", SECONDARY_COLOR);
+                        // Open GameFrame
+                        SwingUtilities.invokeLater(() -> {
+                            GameFrame gameFrame = new GameFrame(authenticatedUser);
+                            gameFrame.setVisible(true);
+                            dispose(); // Close login frame
+                        });
                     } else {
                         showStatusMessage("Invalid username or password.", ERROR_COLOR);
                         passwordField.selectAll();
