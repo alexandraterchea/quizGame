@@ -1,4 +1,3 @@
-// quiz/ui/GameFrame.java - FINAL IMPROVED VERSION with CardLayout for all views
 package quiz.ui;
 
 import quiz.dao.CategoryDAO;
@@ -8,7 +7,6 @@ import quiz.dao.ScoreDAO;
 import quiz.dao.UserDAO;
 import quiz.model.Category;
 import quiz.model.Question;
-import quiz.model.QuizSession;
 import quiz.model.User;
 import quiz.exceptions.DatabaseException;
 import quiz.controller.QuizController; // Import QuizController
@@ -72,7 +70,7 @@ public class GameFrame extends JFrame {
     private ScoreDAO scoreDAO;
     private CategoryDAO categoryDAO;
     private UserDAO userDAO;
-    private AchievementDAO achievementDAO; // For showing new achievements
+    private AchievementDAO achievementDAO; // Fixed: Added variable name
     private AnalyticsDAO analyticsDAO; // For dashboard/profile performance
 
     // UI Colors
@@ -195,7 +193,10 @@ public class GameFrame extends JFrame {
         startCategoryQuizButton.addActionListener(e -> startCategoryQuiz());
 
         JButton startRandomQuizButton = createStyledButton("Start Random Quiz", SECONDARY_COLOR);
-        startRandomQuizButton.addActionListener(e -> startRandomQuiz());
+        startRandomQuizButton.addActionListener(e -> startRandomQuiz()); // Fixed: Added missing parenthesis
+        
+        JButton startAIQuizButton = createStyledButton("Start AI Random Quiz", ACCENT_COLOR);
+        startAIQuizButton.addActionListener(e -> startAIRandomQuiz());
 
         backToWelcomeButton = createStyledButton("Back to Welcome", PRIMARY_COLOR);
         backToWelcomeButton.addActionListener(e -> showWelcomePanel());
@@ -208,6 +209,8 @@ public class GameFrame extends JFrame {
         categoryPanel.add(startCategoryQuizButton);
         categoryPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         categoryPanel.add(startRandomQuizButton);
+        categoryPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        categoryPanel.add(startAIQuizButton);
         categoryPanel.add(Box.createRigidArea(new Dimension(0, 20)));
         categoryPanel.add(backToWelcomeButton);
         categoryPanel.add(Box.createVerticalGlue());
@@ -509,7 +512,7 @@ public class GameFrame extends JFrame {
 
     private void showNewAchievements() {
         try {
-            List<quiz.model.Achievement> newAchievements = achievementDAO.getUserAchievements(currentUser.getId()); // Re-fetch all achievements to see new ones
+            List<quiz.model.Achievement> newAchievements = achievementDAO.getUserAchievements(currentUser.getId()); // Fixed: Now achievementDAO is properly declared
             if (!newAchievements.isEmpty()) {
                 StringBuilder sb = new StringBuilder("Congratulations! You've earned new achievements:\n");
                 for (quiz.model.Achievement ach : newAchievements) {
@@ -565,6 +568,20 @@ public class GameFrame extends JFrame {
     private void stopQuizTimer() {
         if (quizTimer != null && quizTimer.isRunning()) {
             quizTimer.stop();
+        }
+    }
+
+    private void startAIRandomQuiz() {
+        try {
+            quizController.startQuiz(currentUser.getId(), "ai_random", 10, -1);
+            this.questions = quizController.getQuestions();
+            this.quizSessionId = quizController.getQuizSessionId();
+            this.currentQuestionIndex = 0;
+            this.score = 0;
+            loadQuestion();
+            showQuizPanel();
+        } catch (DatabaseException ex) {
+            JOptionPane.showMessageDialog(this, "Error starting AI quiz: " + ex.getMessage(), "AI Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 }

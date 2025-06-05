@@ -49,16 +49,65 @@ public class QuizController {
         this.analyticsDAO = new AnalyticsDAO();
     }
 
-    // Metoda pentru a începe un quiz
+// În QuizController, adaugă aceste metode:
+
+    // Metodă pentru quiz AI random
+    public void startAIRandomQuiz(int userId, int questionCount, int difficultyLevel) throws DatabaseException {
+        this.currentQuestions = quizService.startAIRandomQuiz(userId, questionCount, difficultyLevel);
+        
+        // Creează sesiunea de quiz
+        QuizSession session = new QuizSession(userId, questionCount, "ai_random");
+        this.currentQuizSessionId = quizSessionDAO.createQuizSession(session);
+    }
+
+    // Metodă pentru quiz AI cu categorie
+    public void startAICategoryQuiz(int userId, String category, int questionCount, int difficultyLevel) throws DatabaseException {
+        this.currentQuestions = quizService.startAICategoryQuiz(userId, category, questionCount, difficultyLevel);
+        
+        // Creează sesiunea de quiz
+        QuizSession session = new QuizSession(userId, questionCount, "ai_category");
+        this.currentQuizSessionId = quizSessionDAO.createQuizSession(session);
+    }
+
+    // Metodă pentru quiz hibrid
+    public void startHybridQuiz(int userId, int questionCount, int difficultyLevel) throws DatabaseException {
+        this.currentQuestions = quizService.startHybridQuiz(userId, questionCount, difficultyLevel);
+        
+        // Creează sesiunea de quiz
+        QuizSession session = new QuizSession(userId, questionCount, "hybrid");
+        this.currentQuizSessionId = quizSessionDAO.createQuizSession(session);
+    }
+
+    // Actualizează metoda startQuiz existentă pentru a include opțiunea AI
     public void startQuiz(int userId, String quizType, int questionCount, int categoryId) throws DatabaseException {
         List<Question> questions;
         
-        if ("random".equals(quizType)) {
-            questions = questionDAO.getRandomQuestions(questionCount);
-        } else if ("category".equals(quizType) && categoryId != -1) {
-            questions = questionDAO.getQuestionsByCategory(categoryId, questionCount);
-        } else {
-            questions = questionDAO.getRandomQuestions(questionCount);
+        switch (quizType.toLowerCase()) {
+            case "random":
+                questions = questionDAO.getRandomQuestions(questionCount);
+                break;
+            case "ai_random":
+                try {
+                    questions = quizService.startAIRandomQuiz(userId, questionCount, 2);
+                    if (questions.isEmpty()) {
+                        throw new DatabaseException("AI service not available");
+                    }
+                } catch (Exception e) {
+                    throw new DatabaseException("AI Quiz is currently unavailable. Please try another quiz type.");
+                }
+                break;
+            case "category":
+                if (categoryId != -1) {
+                    questions = questionDAO.getQuestionsByCategory(categoryId, questionCount);
+                } else {
+                    questions = questionDAO.getRandomQuestions(questionCount);
+                }
+                break;
+            case "hybrid":
+                questions = quizService.startHybridQuiz(userId, questionCount, 2);
+                break;
+            default:
+                questions = questionDAO.getRandomQuestions(questionCount);
         }
         
         // Creează sesiunea de quiz

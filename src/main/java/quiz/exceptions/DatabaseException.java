@@ -1,4 +1,4 @@
-package util; // Asigură-te că este în pachetul util, așa cum este folosit în DBUtil și DAO-uri
+package quiz.exceptions; // Asigură-te că este în pachetul util, așa cum este folosit în DBUtil și DAO-uri
 
 import java.sql.SQLException;
 
