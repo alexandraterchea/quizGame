@@ -9,11 +9,10 @@ import quiz.model.Category;
 import quiz.model.Question;
 import quiz.model.User;
 import quiz.exceptions.DatabaseException;
-import quiz.controller.QuizController; // Import QuizController
-import quiz.controller.ProfileController; // Import ProfileController
-import quiz.controller.DashboardController; // Import DashboardController
-import quiz.dao.AchievementDAO; // Import AchievementDAO for showNewAchievements
-import quiz.dao.AnalyticsDAO; // Import AnalyticsDAO for showNewAchievements
+import quiz.controller.QuizController;
+import quiz.controller.DashboardController;
+import quiz.dao.AchievementDAO;
+import quiz.dao.AnalyticsDAO;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -21,7 +20,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
-import java.util.concurrent.TimeUnit; // Import TimeUnit for time formatting
+import java.util.concurrent.TimeUnit;
 
 public class GameFrame extends JFrame {
     private User currentUser;
@@ -31,7 +30,6 @@ public class GameFrame extends JFrame {
     private int quizSessionId;
     private long questionStartTime;
 
-    // UI Components for various panels
     private JPanel cardPanel;
     private CardLayout cardLayout;
 
@@ -40,16 +38,14 @@ public class GameFrame extends JFrame {
     private JLabel welcomeLabel;
     private JButton startQuizFlowButton;
     private JButton profileButton;
-    private JButton viewStatsButton; // New stats button
-    private JButton exitButton; // Shared exit button
+    private JButton viewStatsButton;
+    private JButton exitButton;
 
-    // Category Selection Panel components
     private JPanel categoryPanel;
     private JComboBox<Category> categoryComboBox;
     private JButton startCategoryQuizButton;
     private JButton backToWelcomeButton;
 
-    // Quiz Panel components
     private JPanel quizPanel;
     private JLabel questionLabel;
     private JRadioButton optionA, optionB, optionC, optionD;
@@ -57,23 +53,19 @@ public class GameFrame extends JFrame {
     private JButton submitButton;
     private JLabel timerLabel;
     private Timer quizTimer;
-    private int timeElapsed; // total time elapsed for the quiz
+    private int timeElapsed;
 
-    // Controllers
     private QuizController quizController;
-    private ProfileController profileController; // Added ProfileController
-    private DashboardController dashboardController; // Added DashboardController
+    private DashboardController dashboardController;
 
-    // DAOs - these will be passed to controllers
     private QuestionDAO questionDAO;
     private QuizSessionDAO quizSessionDAO;
     private ScoreDAO scoreDAO;
     private CategoryDAO categoryDAO;
     private UserDAO userDAO;
-    private AchievementDAO achievementDAO; // Fixed: Added variable name
-    private AnalyticsDAO analyticsDAO; // For dashboard/profile performance
+    private AchievementDAO achievementDAO;
+    private AnalyticsDAO analyticsDAO;
 
-    // UI Colors
     private static final Color PRIMARY_COLOR = new Color(70, 130, 180); // SteelBlue
     private static final Color SECONDARY_COLOR = new Color(60, 179, 113); // MediumAquamarine
     private static final Color ACCENT_COLOR = new Color(255, 140, 0); // DarkOrange
@@ -83,7 +75,6 @@ public class GameFrame extends JFrame {
 
     public GameFrame(User user) {
         this.currentUser = user;
-        // Initialize DAOs
         this.questionDAO = new QuestionDAO();
         this.quizSessionDAO = new QuizSessionDAO();
         this.scoreDAO = new ScoreDAO();
@@ -92,11 +83,7 @@ public class GameFrame extends JFrame {
         this.achievementDAO = new AchievementDAO();
         this.analyticsDAO = new AnalyticsDAO();
 
-        // Initialize Controllers, passing necessary DAOs
         this.quizController = new QuizController(currentUser, questionDAO, quizSessionDAO, scoreDAO, achievementDAO, analyticsDAO, this); // Pass GameFrame reference
-        // Profile and Dashboard controllers will be initialized when needed
-        // For now, let's just make sure we have analyticsDAO for the profile part.
-        // The ProfileFrame constructor needs a GameFrame reference now.
 
         setupFrame();
         initComponents();
@@ -126,7 +113,6 @@ public class GameFrame extends JFrame {
     }
 
     private void initComponents() {
-        // Shared Exit Button (can be added to other panels as well if needed)
         exitButton = createStyledButton("Exit", PRIMARY_COLOR);
         exitButton.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(this,
@@ -168,7 +154,7 @@ public class GameFrame extends JFrame {
         welcomePanel.add(Box.createRigidArea(new Dimension(0, 20)));
         welcomePanel.add(viewStatsButton);
         welcomePanel.add(Box.createRigidArea(new Dimension(0, 20)));
-        welcomePanel.add(exitButton); // Add exit button to welcome panel
+        welcomePanel.add(exitButton);
         welcomePanel.add(Box.createVerticalGlue());
     }
 
@@ -193,8 +179,8 @@ public class GameFrame extends JFrame {
         startCategoryQuizButton.addActionListener(e -> startCategoryQuiz());
 
         JButton startRandomQuizButton = createStyledButton("Start Random Quiz", SECONDARY_COLOR);
-        startRandomQuizButton.addActionListener(e -> startRandomQuiz()); // Fixed: Added missing parenthesis
-        
+        startRandomQuizButton.addActionListener(e -> startRandomQuiz());
+
         JButton startAIQuizButton = createStyledButton("Start AI Random Quiz", ACCENT_COLOR);
         startAIQuizButton.addActionListener(e -> startAIRandomQuiz());
 
@@ -289,7 +275,6 @@ public class GameFrame extends JFrame {
         return button;
     }
 
-    // --- Navigation Methods ---
     public void showWelcomePanel() {
         cardLayout.show(cardPanel, "Welcome");
         updateWelcomeLabel();
@@ -304,15 +289,11 @@ public class GameFrame extends JFrame {
         ProfileFrame profileFrame = new ProfileFrame(currentUser, userDAO, this, exitButton);
         cardPanel.add(profileFrame, "Profile");
         cardLayout.show(cardPanel, "Profile");
-        // Optionally, call a method on profileFrame to load data if it needs to refresh
-        profileFrame.loadUserProfileData(); // Make sure this method exists in ProfileFrame
+        profileFrame.loadUserProfileData();
     }
 
     public void showDashboardPanel() {
-        // Assuming DashboardFrame will be a JPanel to fit into CardLayout
-        // For simplicity, let's reuse ProfileFrame structure for now or create a basic one
-        // A dedicated DashboardFrame/Panel would be ideal
-        JPanel dashboardPanel = new JPanel(); // Placeholder
+        JPanel dashboardPanel = new JPanel();
         dashboardPanel.setLayout(new BorderLayout());
         dashboardPanel.setBorder(new EmptyBorder(50, 50, 50, 50));
         dashboardPanel.setBackground(CARD_COLOR);
@@ -343,7 +324,6 @@ public class GameFrame extends JFrame {
     }
 
 
-    // --- Quiz Logic (Delegated to QuizController) ---
     private void startRandomQuiz() {
         try {
             quizController.startQuiz(currentUser.getId(), "random", 10, -1); // 10 questions, no category
@@ -388,7 +368,6 @@ public class GameFrame extends JFrame {
             optionsGroup.clearSelection();
             questionStartTime = System.currentTimeMillis();
         } else {
-            // This case should ideally not be reached if finishQuiz is called correctly
             finishQuiz();
         }
     }
@@ -440,8 +419,8 @@ public class GameFrame extends JFrame {
         }
 
         showQuizResultsDialog(score, totalQuestions, totalTimeTaken, percentage);
-        showNewAchievements(); // This will trigger achievement display
-        updateDashboardFromGameFrame(); // Update dashboard after quiz
+        showNewAchievements();
+        updateDashboardFromGameFrame();
     }
 
     private void showQuizResultsDialog(int score, int totalQuestions, int totalTimeMillis, double percentage) {
@@ -475,13 +454,13 @@ public class GameFrame extends JFrame {
 
         String performanceMessage;
         if (percentage >= 90) {
-            performanceMessage = "🏆 Excellent work!";
+            performanceMessage = "Excellent work!";
         } else if (percentage >= 70) {
-            performanceMessage = "👍 Good job!";
+            performanceMessage = "Good job!";
         } else if (percentage >= 50) {
-            performanceMessage = "👌 Not bad!";
+            performanceMessage = "Not bad!";
         } else {
-            performanceMessage = "📚 Keep studying!";
+            performanceMessage = "Keep studying!";
         }
 
         JLabel performanceLabel = new JLabel(performanceMessage, SwingConstants.CENTER);
@@ -493,7 +472,7 @@ public class GameFrame extends JFrame {
         okButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         okButton.addActionListener(e -> {
             resultsDialog.dispose();
-            showWelcomePanel(); // Go back to welcome panel after results
+            showWelcomePanel();
         });
 
         contentPanel.add(titleLabel);
@@ -512,7 +491,7 @@ public class GameFrame extends JFrame {
 
     private void showNewAchievements() {
         try {
-            List<quiz.model.Achievement> newAchievements = achievementDAO.getUserAchievements(currentUser.getId()); // Fixed: Now achievementDAO is properly declared
+            List<quiz.model.Achievement> newAchievements = achievementDAO.getUserAchievements(currentUser.getId());
             if (!newAchievements.isEmpty()) {
                 StringBuilder sb = new StringBuilder("Congratulations! You've earned new achievements:\n");
                 for (quiz.model.Achievement ach : newAchievements) {
@@ -530,8 +509,6 @@ public class GameFrame extends JFrame {
     }
 
     private void updateDashboardFromGameFrame() {
-        // This is a placeholder. In a real app, you might refresh the dashboard
-        // if it's currently visible, or ensure it loads fresh data when next viewed.
         System.out.println("Dashboard data needs to be refreshed.");
     }
 
@@ -549,7 +526,7 @@ public class GameFrame extends JFrame {
     }
 
     private void startQuizTimer() {
-        timeElapsed = 0; // Reset total time
+        timeElapsed = 0;
         if (quizTimer != null && quizTimer.isRunning()) {
             quizTimer.stop();
         }

@@ -6,18 +6,17 @@ import quiz.dao.UserDAO;
 import quiz.exceptions.DatabaseException;
 import quiz.model.User;
 import quiz.model.QuizSession;
-import quiz.ui.ProfileFrame; // Import ProfileFrame for UI updates
+import quiz.ui.ProfileFrame;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit; // For time calculations
 import java.util.regex.Pattern;
 
 public class ProfileController {
     private User currentUser;
     private AnalyticsDAO analyticsDAO;
     private QuizSessionDAO quizSessionDAO;
-    private UserDAO userDAO; // To update user profile
-    private ProfileFrame profileFrame; // Reference to the UI frame
+    private UserDAO userDAO;
+    private ProfileFrame profileFrame;
 
     public ProfileController(User currentUser, AnalyticsDAO analyticsDAO, QuizSessionDAO quizSessionDAO, UserDAO userDAO, ProfileFrame profileFrame) {
         this.currentUser = currentUser;
@@ -27,13 +26,12 @@ public class ProfileController {
         this.profileFrame = profileFrame;
     }
 
+    //incarca datele profilului utilizatorului
     public void loadProfileData(int userId) {
         try {
-            // Fetch performance metrics
             double performance = analyticsDAO.getUserPerformance(userId);
             String level = analyticsDAO.getPerformanceLevel(userId);
 
-            // Fetch quiz session stats
             List<QuizSession> sessions = quizSessionDAO.getUserQuizSessions(userId);
 
             int totalQuizzes = sessions.size();
@@ -43,7 +41,7 @@ public class ProfileController {
             long totalTimeMillis = 0;
 
             for (QuizSession session : sessions) {
-                if (session.getCompletedAt() != null) { // Only consider completed quizzes
+                if (session.getCompletedAt() != null) {
                     totalCorrectAnswers += session.getCorrectAnswers();
                     totalQuestionsAttempted += session.getTotalQuestions();
                     totalTimeMillis += session.getTimeTaken();
@@ -60,7 +58,7 @@ public class ProfileController {
             double averageScore = (totalQuestionsAttempted > 0) ?
                     ((double) totalCorrectAnswers / totalQuestionsAttempted * 100) : 0.0;
 
-            // Update UI via ProfileFrame methods
+            //actualizeaza ui
             profileFrame.updateProfileStats(totalQuizzes, averageScore, bestScore, totalTimeMillis);
             profileFrame.updateRecentQuizzesTable(sessions);
 
@@ -70,13 +68,12 @@ public class ProfileController {
         } catch (DatabaseException e) {
             System.err.println("Error loading user profile data: " + e.getMessage());
             e.printStackTrace();
-            // Inform UI about error if needed
             profileFrame.showProfileUpdateError("Failed to load profile data.");
         }
     }
 
+    //actualizare info personale
     public void updateUserProfile(int userId, String newUsername, String newEmail) {
-        // Basic validation (more comprehensive validation might be in UserDAO or a dedicated UserService)
         if (newUsername == null || newUsername.trim().isEmpty()) {
             profileFrame.showProfileUpdateError("Username cannot be empty.");
             return;
@@ -87,7 +84,6 @@ public class ProfileController {
         }
 
         try {
-            // Get current user details to update
             User userToUpdate = userDAO.getUserById(userId);
             if (userToUpdate == null) {
                 profileFrame.showProfileUpdateError("User not found.");
@@ -99,7 +95,6 @@ public class ProfileController {
 
             boolean updated = userDAO.updateUserProfile(userToUpdate);
             if (updated) {
-                // Actualizare profil cu succes
                 currentUser.setUsername(newUsername);
                 currentUser.setEmail(newEmail);
                 profileFrame.showProfileUpdateSuccess(newUsername);

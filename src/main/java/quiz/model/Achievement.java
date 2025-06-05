@@ -10,7 +10,6 @@ public class Achievement {
     private LocalDateTime achievedAt;
     private int pointsAwarded;
 
-    // Constructors
     public Achievement() {}
 
     public int getId() {
@@ -27,10 +26,6 @@ public class Achievement {
 
     public void setUserId(int userId) {
         this.userId = userId;
-    }
-
-    public String getAchievementType() {
-        return achievementType;
     }
 
     public void setAchievementType(String achievementType) {

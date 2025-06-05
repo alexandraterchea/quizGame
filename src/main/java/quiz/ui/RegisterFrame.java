@@ -8,8 +8,6 @@ import quiz.exceptions.DatabaseException;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.regex.Pattern;
@@ -25,13 +23,11 @@ public class RegisterFrame extends JFrame {
     private JLabel statusLabel;
     private JProgressBar strengthBar;
     private JLabel strengthLabel;
-    private JButton exitButton; // New exit button
+    private JButton exitButton;
 
-    // Color scheme matching the GameFrame
     private final Color PRIMARY_COLOR = new Color(70, 130, 180);
     private final Color SECONDARY_COLOR = new Color(60, 160, 60);
     private final Color ERROR_COLOR = new Color(220, 53, 69);
-    private final Color WARNING_COLOR = new Color(255, 193, 7);
     private final Color BACKGROUND_COLOR = new Color(248, 249, 250);
     private final Color CARD_COLOR = Color.WHITE;
 
@@ -44,7 +40,7 @@ public class RegisterFrame extends JFrame {
     private void setupFrame() {
         setTitle("QuizMaster - Register");
         setSize(450, 600);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Close only this frame
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
         getContentPane().setBackground(BACKGROUND_COLOR);
@@ -77,7 +73,7 @@ public class RegisterFrame extends JFrame {
 
         registerButton = createStyledButton("Register", SECONDARY_COLOR);
         cancelButton = createStyledButton("Cancel", PRIMARY_COLOR);
-        exitButton = createStyledButton("Exit", ERROR_COLOR); // Initialize exit button
+        exitButton = createStyledButton("Exit", ERROR_COLOR);
 
         statusLabel = new JLabel(" ", SwingConstants.CENTER);
         statusLabel.setFont(new Font("Arial", Font.PLAIN, 14));
@@ -109,8 +105,8 @@ public class RegisterFrame extends JFrame {
 
     private void setupEventListeners() {
         registerButton.addActionListener(e -> registerUser());
-        cancelButton.addActionListener(e -> dispose()); // Close register frame
-        exitButton.addActionListener(e -> System.exit(0)); // Exit application on click
+        cancelButton.addActionListener(e -> dispose());
+        exitButton.addActionListener(e -> System.exit(0));
 
         passwordField.addKeyListener(new KeyListener() {
             @Override
@@ -173,13 +169,13 @@ public class RegisterFrame extends JFrame {
         strengthBar.setValue(strength);
 
         if (strength >= 80) {
-            strengthLabel.setText("Password Strength: Strong 💪");
+            strengthLabel.setText("Password Strength: Strong");
             strengthBar.setForeground(new Color(0, 150, 0)); // Dark Green
         } else if (strength >= 50) {
-            strengthLabel.setText("Password Strength: Medium 👍");
+            strengthLabel.setText("Password Strength: Medium");
             strengthBar.setForeground(new Color(255, 165, 0)); // Orange
         } else {
-            strengthLabel.setText("Password Strength: Weak 👎");
+            strengthLabel.setText("Password Strength: Weak");
             strengthBar.setForeground(new Color(200, 0, 0)); // Red
         }
     }
@@ -201,10 +197,10 @@ public class RegisterFrame extends JFrame {
         String confirmPassword = new String(confirmPasswordField.getPassword());
 
         if (!validateInput(username, email, password, confirmPassword)) {
-            return; // Validation failed, message already shown
+            return;
         }
 
-        showSuccessMessage(); // Temporarily show success before starting worker
+        showSuccessMessage();
 
         SwingWorker<Boolean, Void> registerWorker = new SwingWorker<Boolean, Void>() {
             @Override
@@ -258,7 +254,6 @@ public class RegisterFrame extends JFrame {
             return false;
         }
 
-        // Password validation
         if (password.isEmpty()) {
             showErrorMessage("Password is required");
             passwordField.requestFocus();
@@ -269,13 +264,12 @@ public class RegisterFrame extends JFrame {
             passwordField.requestFocus();
             return false;
         }
-        if (calculatePasswordStrength(password) < 1) { // Check if strength is above 0
+        if (calculatePasswordStrength(password) < 1) {
             showErrorMessage("Password is too weak. Please choose a stronger password");
             passwordField.requestFocus();
             return false;
         }
 
-        // Confirm password validation
         if (confirmPassword.isEmpty()) {
             showErrorMessage("Please confirm your password");
             confirmPasswordField.requestFocus();

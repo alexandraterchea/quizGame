@@ -11,41 +11,18 @@ public class QuizSession {
     private int finalScore;
     private int timeTaken;
     private String sessionType;
-    // în clasa QuizSession
-    private int categoryId; // poate fi -1 pentru fără categorie specifică
+    private int categoryId;
+    private String quizType;
 
-    // Constructors
     public QuizSession() {}
 
-    public QuizSession(int userId, int totalQuestions, String sessionType) {
+    public QuizSession(int userId, int totalQuestions, String quizType) {
         this.userId = userId;
         this.totalQuestions = totalQuestions;
-        this.sessionType = sessionType;
-        this.startedAt = LocalDateTime.now();
-    }
-
-    public void startSession() {
-        this.startedAt = LocalDateTime.now();
-        this.completedAt = null;
+        this.quizType = quizType;
         this.correctAnswers = 0;
         this.finalScore = 0;
         this.timeTaken = 0;
-    }
-
-    public void completeSession(int correctAnswers, int finalScore, int timeTaken) {
-        this.correctAnswers = correctAnswers;
-        this.finalScore = finalScore;
-        this.timeTaken = timeTaken;
-        this.completedAt = LocalDateTime.now();
-    }
-
-    public boolean isCompleted() {
-        return completedAt != null;
-    }
-
-    public int calculateScorePercentage() {
-        if (totalQuestions == 0) return 0;
-        return (int)((correctAnswers * 100.0) / totalQuestions);
     }
 
     public int getId() {
@@ -80,28 +57,17 @@ public class QuizSession {
         this.completedAt = completedAt;
     }
 
-    public int getTotalQuestions() {
-        return totalQuestions;
-    }
+    public int getTotalQuestions() { return totalQuestions; }
+    public void setTotalQuestions(int totalQuestions) { this.totalQuestions = totalQuestions; }
 
-    public void setTotalQuestions(int totalQuestions) {
-        this.totalQuestions = totalQuestions;
-    }
+    public int getCorrectAnswers() { return correctAnswers; }
+    public void setCorrectAnswers(int correctAnswers) { this.correctAnswers = correctAnswers; }
 
-    public int getFinalScore() {
-        return finalScore;
-    }
-
+    public String getQuizType() { return quizType; }
+    public void setQuizType(String quizType) { this.quizType = quizType; }
+    
     public void setFinalScore(int finalScore) {
         this.finalScore = finalScore;
-    }
-
-    public int getCorrectAnswers() {
-        return correctAnswers;
-    }
-
-    public void setCorrectAnswers(int correctAnswers) {
-        this.correctAnswers = correctAnswers;
     }
 
     public int getTimeTaken() {
@@ -116,17 +82,8 @@ public class QuizSession {
         return sessionType;
     }
 
-    public void setSessionType(String sessionType) {
-        this.sessionType = sessionType;
-    }
-
     public int getCategoryId() {
         return categoryId;
     }
-
-    public void setCategoryId(int categoryId) {
-        this.categoryId = categoryId;
-    }
-
 
 }

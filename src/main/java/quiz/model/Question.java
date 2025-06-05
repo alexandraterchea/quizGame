@@ -14,18 +14,6 @@ public class Question {
 
     public Question() {}
 
-    public Question(int id, String text, String optionA, String optionB, String optionC, String optionD, char correctOption,int difficultyLevel) {
-        this.id = id;
-        this.text = text;
-        this.optionA = optionA;
-        this.optionB = optionB;
-        this.optionC = optionC;
-        this.optionD = optionD;
-        this.correctOption = correctOption;
-        this.difficultyLevel=difficultyLevel;
-    }
-
-
     public int getId() { return id; }
     public int getCategoryId(){return categoryId;}
     public String getText() { return text; }

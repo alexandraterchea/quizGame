@@ -8,10 +8,11 @@ public class AdminController {
         AchievementDAO achievementDAO = new AchievementDAO();
         try {
             int newAchievements = achievementDAO.checkAndAwardAchievements(userId);
-            System.out.println("Awarding " + newAchievements + " new achievements!"); // Display message on console
+            System.out.println("Awarding " + newAchievements + " new achievements!");
         } catch (DatabaseException e) {
             System.err.println("Error awarding achievements: " + e.getMessage());
             e.printStackTrace();
         }
     }
 }
+//nu l mai sterg)))

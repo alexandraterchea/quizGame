@@ -1,4 +1,3 @@
-// quiz/ui/LoginFrame.java - IMPROVED VERSION
 package quiz.ui;
 
 import quiz.dao.UserDAO;
@@ -8,8 +7,7 @@ import quiz.exceptions.DatabaseException;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
@@ -19,10 +17,9 @@ public class LoginFrame extends JFrame {
     private JPasswordField passwordField;
     private JButton loginButton;
     private JButton registerButton;
-    private JButton exitButton; // New exit button
+    private JButton exitButton; 
     private JLabel statusLabel;
 
-    // Color scheme matching the GameFrame
     private final Color PRIMARY_COLOR = new Color(70, 130, 180);
     private final Color SECONDARY_COLOR = new Color(60, 160, 60);
     private final Color ERROR_COLOR = new Color(220, 53, 69);
@@ -60,12 +57,21 @@ public class LoginFrame extends JFrame {
         subtitleLabel.setForeground(new Color(100, 100, 100));
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        JLabel usernameLabel = new JLabel("Username:");
+        usernameLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        usernameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         usernameField = createStyledTextField("Username");
+
+        JLabel passwordLabel = new JLabel("Password:");
+        passwordLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        passwordLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         passwordField = createStyledPasswordField("Password");
 
         loginButton = createStyledButton("Login", PRIMARY_COLOR);
         registerButton = createStyledButton("Register", SECONDARY_COLOR);
-        exitButton = createStyledButton("Exit", ERROR_COLOR); // Initialize exit button
+        exitButton = createStyledButton("Exit", ERROR_COLOR);
 
         statusLabel = new JLabel(" ", SwingConstants.CENTER);
         statusLabel.setFont(new Font("Arial", Font.PLAIN, 14));
@@ -75,10 +81,17 @@ public class LoginFrame extends JFrame {
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
         panel.add(subtitleLabel);
         panel.add(Box.createRigidArea(new Dimension(0, 40)));
+        
+        panel.add(usernameLabel);
+        panel.add(Box.createRigidArea(new Dimension(0, 5)));
         panel.add(usernameField);
         panel.add(Box.createRigidArea(new Dimension(0, 15)));
+        
+        panel.add(passwordLabel);
+        panel.add(Box.createRigidArea(new Dimension(0, 5)));
         panel.add(passwordField);
         panel.add(Box.createRigidArea(new Dimension(0, 30)));
+        
         panel.add(loginButton);
         panel.add(Box.createRigidArea(new Dimension(0, 15)));
         panel.add(registerButton);
@@ -93,9 +106,8 @@ public class LoginFrame extends JFrame {
     private void setupEventListeners() {
         loginButton.addActionListener(e -> login());
         registerButton.addActionListener(e -> showRegisterFrame());
-        exitButton.addActionListener(e -> System.exit(0)); // Exit application on click
+        exitButton.addActionListener(e -> System.exit(0));
 
-        // Add KeyListener for Enter key on password field
         KeyListener enterKeyListener = new KeyListener() {
             @Override
             public void keyTyped(KeyEvent e) {}
@@ -115,7 +127,7 @@ public class LoginFrame extends JFrame {
     }
 
     private JTextField createStyledTextField(String placeholder) {
-        JTextField field = new JTextField(placeholder);
+        JTextField field = new JTextField();
         field.setFont(new Font("Arial", Font.PLAIN, 16));
         field.setMaximumSize(new Dimension(300, 40));
         field.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -123,12 +135,12 @@ public class LoginFrame extends JFrame {
                 BorderFactory.createLineBorder(PRIMARY_COLOR.brighter(), 1),
                 BorderFactory.createEmptyBorder(10, 15, 10, 15)
         ));
-        field.putClientProperty("JTextField.placeholderText", placeholder); // For modern look & feel if supported
+        field.putClientProperty("JTextField.placeholderText", placeholder);
         return field;
     }
 
     private JPasswordField createStyledPasswordField(String placeholder) {
-        JPasswordField field = new JPasswordField(placeholder);
+        JPasswordField field = new JPasswordField();
         field.setFont(new Font("Arial", Font.PLAIN, 16));
         field.setMaximumSize(new Dimension(300, 40));
         field.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -136,7 +148,7 @@ public class LoginFrame extends JFrame {
                 BorderFactory.createLineBorder(PRIMARY_COLOR.brighter(), 1),
                 BorderFactory.createEmptyBorder(10, 15, 10, 15)
         ));
-        field.putClientProperty("JTextField.placeholderText", placeholder); // For modern look & feel if supported
+        field.putClientProperty("JTextField.placeholderText", placeholder);
         return field;
     }
 
@@ -167,7 +179,6 @@ public class LoginFrame extends JFrame {
 
         showStatusMessage("Logging in...", PRIMARY_COLOR);
 
-        // Use SwingWorker for background login operation
         SwingWorker<User, Void> loginWorker = new SwingWorker<User, Void>() {
             @Override
             protected User doInBackground() throws DatabaseException {
@@ -178,14 +189,14 @@ public class LoginFrame extends JFrame {
             @Override
             protected void done() {
                 try {
-                    User authenticatedUser = get(); // Get the result from doInBackground
+                    User authenticatedUser = get();
                     if (authenticatedUser != null) {
                         showStatusMessage("Login successful! Welcome, " + authenticatedUser.getUsername() + "!", SECONDARY_COLOR);
-                        // Open GameFrame
+
                         SwingUtilities.invokeLater(() -> {
                             GameFrame gameFrame = new GameFrame(authenticatedUser);
                             gameFrame.setVisible(true);
-                            dispose(); // Close login frame
+                            dispose();
                         });
                     } else {
                         showStatusMessage("Invalid username or password.", ERROR_COLOR);
@@ -214,19 +225,10 @@ public class LoginFrame extends JFrame {
         statusLabel.setText(message);
         statusLabel.setForeground(color);
 
-        // Clear the message after 5 seconds if it's not an error
         if (!color.equals(ERROR_COLOR)) {
             Timer timer = new Timer(5000, e -> statusLabel.setText(" "));
             timer.setRepeats(false);
             timer.start();
         }
-    }
-
-    // Method to clear form (useful for testing)
-    public void clearForm() {
-        usernameField.setText("");
-        passwordField.setText("");
-        statusLabel.setText(" ");
-        usernameField.requestFocus();
     }
 }

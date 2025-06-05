@@ -23,8 +23,8 @@ public class AchievementDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     int achievementsAwarded = rs.getInt(1);
-                    System.out.println("Utilizatorul " + userId + " a primit " +
-                            achievementsAwarded + " realizări noi!");
+                    System.out.println("User " + userId + " got " +
+                            achievementsAwarded + " new achievements!");
                     return achievementsAwarded;
                 }
             }

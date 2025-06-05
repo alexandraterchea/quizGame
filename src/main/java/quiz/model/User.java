@@ -12,22 +12,14 @@ public class User {
     private int bestStreak;
     private int currentLevel;
 
-    public User() {} // Constructor implicit
+    public User() {}
 
-    public User(String username, String password) {
-        this.username = username;
-        this.password = password;
-        // Email-ul va fi implicit null sau gol, sau necesită un set explicit
-    }
-
-    // Noul constructor cu email
     public User(String username, String password, String email) {
         this.username = username;
         this.password = password;
         this.email = email;
     }
 
-    // Getteri și Setteri existenți...
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 

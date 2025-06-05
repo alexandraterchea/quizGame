@@ -15,21 +15,14 @@ public class QuestionService {
         this.questions = questions;
     }
 
-    // Filtrare întrebări după nivel de dificultate (int)
+    // filtrare intrebari dupa dificultate
     public List<Question> getQuestionsByDifficulty(int difficultyLevel) {
         return questions.stream()
             .filter(q -> q.getDifficultyLevel() == difficultyLevel)
             .collect(Collectors.toList());
     }
 
-    // Filtrare după categorie (folosind categoryName)
-    public List<Question> getQuestionsByCategory(String category) {
-        return questions.stream()
-            .filter(q -> q.getCategoryName().equals(category))
-            .collect(Collectors.toList());
-    }
-
-    // Sortare întrebări după categorie
+    // sortare intrebari dupa categorie
     public List<Question> getQuestionsSortedByCategory() {
         return questions.stream()
             .sorted(Comparator.comparing(Question::getCategoryName))

@@ -12,39 +12,6 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 
 public class UserDAO {
-
-    public User findByUsername(String username) throws DatabaseException {
-        String sql = "SELECT * FROM users WHERE username = ?";
-        try (Connection conn = DBUtil.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, username);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapResultSetToUser(rs);
-                }
-                return null; // Nu a fost găsit niciun user cu acest username
-            }
-        } catch (SQLException e) {
-            throw new DatabaseException("Error finding user by username", e);
-        }
-    }
-
-    public User findByEmail(String email) throws DatabaseException {
-        String sql = "SELECT * FROM users WHERE email = ?";
-        try (Connection conn = DBUtil.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, email);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapResultSetToUser(rs);
-                }
-                return null; // Nu a fost găsit niciun user cu acest email
-            }
-        } catch (SQLException e) {
-            throw new DatabaseException("Error finding user by email", e);
-        }
-    }
-
     public User login(String username, String password) throws DatabaseException {
         String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
         try (Connection conn = DBUtil.getConnection();
@@ -71,7 +38,7 @@ public class UserDAO {
                 if (rs.next()) {
                     return mapResultSetToUser(rs);
                 } else {
-                    return null; // Sau aruncă o excepție dacă userul nu există
+                    return null;
                 }
             }
         } catch (SQLException e) {
@@ -96,33 +63,33 @@ public class UserDAO {
 
 public boolean updateUserProfile(User user) throws DatabaseException {
     try (Connection conn = DBUtil.getConnection()) {
-        // Verifică dacă username-ul este folosit de altcineva
+        //verifica daca username-ul este deja folosit de altcineva
         String checkUsernameSql = "SELECT id FROM users WHERE username = ? AND id <> ?";
         try (PreparedStatement checkStmt = conn.prepareStatement(checkUsernameSql)) {
             checkStmt.setString(1, user.getUsername());
             checkStmt.setInt(2, user.getId());
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next()) {
-                    // Username deja folosit de alt utilizator
+                    //username deja folosit de alt utilizator
                     return false;
                 }
             }
         }
 
-        // Verifică dacă email-ul este folosit de altcineva
+        //verifica daca email-ul este deja folosit de altcineva
         String checkEmailSql = "SELECT id FROM users WHERE email = ? AND id <> ?";
         try (PreparedStatement checkStmt = conn.prepareStatement(checkEmailSql)) {
             checkStmt.setString(1, user.getEmail());
             checkStmt.setInt(2, user.getId());
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next()) {
-                    // Email deja folosit de alt utilizator
+                    //email deja folosit de alt utilizator
                     return false;
                 }
             }
         }
 
-        // Dacă nu există conflicte, fac updateul
+        //daca nu exista conflicte, actualizeaza profilul
         String updateSql = "UPDATE users SET username = ?, email = ? WHERE id = ?";
         try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
             updateStmt.setString(1, user.getUsername());
@@ -135,38 +102,6 @@ public boolean updateUserProfile(User user) throws DatabaseException {
         throw new DatabaseException("Error updating user profile", e);
     }
 }
-    
-	public boolean save(User user) throws DatabaseException {
-        String sql = "INSERT INTO users (username, password, email, registration_date, totalScore, gamesPlayed, bestStreak, currentLevel) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DBUtil.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-             
-            stmt.setString(1, user.getUsername());
-            stmt.setString(2, user.getPassword());
-            stmt.setString(3, user.getEmail());
-            stmt.setTimestamp(4, Timestamp.valueOf(user.getRegistration_date()));
-            stmt.setInt(5, user.getTotalScore());
-            stmt.setInt(6, user.getGamesPlayed());
-            stmt.setInt(7, user.getBestStreak());
-            stmt.setInt(8, user.getCurrentLevel());
-            
-            int affectedRows = stmt.executeUpdate();
-            if (affectedRows == 0) {
-                throw new DatabaseException("Creating user failed, no rows affected.");
-            }
-            
-            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                if (generatedKeys.next()) {
-                    user.setId(generatedKeys.getInt(1));
-                } else {
-                    throw new DatabaseException("Creating user failed, no ID obtained.");
-                }
-            }
-            return true;
-        } catch (SQLException e) {
-            throw new DatabaseException("Error saving user", e);
-        }
-    }
 
     public boolean registerUser(User user) throws DatabaseException {
         String sql = "INSERT INTO users (username, password, email) VALUES (?, ?, ?)";

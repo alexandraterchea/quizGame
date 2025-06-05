@@ -8,9 +8,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-// Creează un nou DAO pentru funcții speciale
+//creeaza un DAO pentru Analytics care va calcula performanta utilizatorilor
 public class AnalyticsDAO {
-
     public double getUserPerformance(int userId) throws DatabaseException {
         String sql = "SELECT calculate_user_performance(?)";
 
