@@ -3,7 +3,7 @@ package quiz.dao;
 
 import quiz.model.Question;
 import util.DBUtil;
-import util.DatabaseException;
+import quiz.exceptions.DatabaseException;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -69,10 +69,10 @@ public class QuestionDAO {
         return questions;
     }
 
+    //functia care selecteaza intrebari adaptate la nivelul utilizatorului->pe baza performantei sale
     public List<Question> getAdaptiveQuestions(int userId, int count) throws DatabaseException {
         List<Question> questions = new ArrayList<>();
-        // Asigură-te că numele funcției din BD este exact "get_adaptive_questions"
-        // Modified SQL to include category_id in SELECT statement
+
         String sql = "SELECT question_id, question_text, opt_a, opt_b, opt_c, opt_d, correct_opt, difficulty, category_id FROM get_adaptive_questions(?, ?)";
 
         try (Connection conn = DBUtil.getConnection();
@@ -89,9 +89,8 @@ public class QuestionDAO {
                     q.setOptionC(rs.getString("opt_c"));
                     q.setOptionD(rs.getString("opt_d"));
                     q.setCorrectOption(rs.getString("correct_opt").charAt(0));
-                    q.setDifficultyLevel(rs.getInt("difficulty")); // Numele coloanei din funcția PL/pgSQL
-                    q.setCategoryId(rs.getInt("category_id")); // Set categoryId
-                    // q.setCategoryName(rs.getString("category_name")); // Funcția din BD nu returnează category_name
+                    q.setDifficultyLevel(rs.getInt("difficulty"));
+                    q.setCategoryId(rs.getInt("category_id"));
                     questions.add(q);
                 }
             }

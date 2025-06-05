@@ -3,7 +3,7 @@ package quiz.dao;
 
 import quiz.model.Category;
 import util.DBUtil;
-import util.DatabaseException;
+import quiz.exceptions.DatabaseException;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

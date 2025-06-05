@@ -6,7 +6,7 @@ public class User {
     private String username;
     private String password;
     private String email; // Adăugat câmpul email
-    private LocalDateTime registrationDate;
+    private LocalDateTime registration_date;
     private int totalScore;
     private int gamesPlayed;
     private int bestStreak;
@@ -40,8 +40,8 @@ public class User {
     public String getEmail() { return email; } // Getter pentru email
     public void setEmail(String email) { this.email = email; } // Setter pentru email
 
-    public LocalDateTime getRegistrationDate() { return registrationDate; }
-    public void setRegistrationDate(LocalDateTime registrationDate) { this.registrationDate = registrationDate; }
+    public LocalDateTime getRegistration_date() { return registration_date; }
+    public void setRegistration_date(LocalDateTime registration_date) { this.registration_date = registration_date; }
 
     public int getTotalScore() { return totalScore; }
     public void setTotalScore(int totalScore) { this.totalScore = totalScore; }

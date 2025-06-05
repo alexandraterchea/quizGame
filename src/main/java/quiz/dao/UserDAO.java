@@ -1,96 +1,126 @@
 package quiz.dao;
 
 import quiz.model.User;
+import quiz.exceptions.DatabaseException;
 import util.DBUtil;
-import util.DatabaseException;
 
-import java.sql.*;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
 
 public class UserDAO {
 
-    public boolean register(User user) throws DatabaseException {
-        String sql = "INSERT INTO users(username, password, email) VALUES (?, ?, ?)";
+    public User findByUsername(String username) throws DatabaseException {
+        String sql = "SELECT * FROM users WHERE username = ?";
         try (Connection conn = DBUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, user.getUsername());
-            ps.setString(2, user.getPassword());
-            ps.setString(3, user.getEmail()); // Adăugat email
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            // Este important să prindeți "duplicate key" specific (error code)
-            if (e.getSQLState().equals("23505")) { // Cod de eroare pentru încălcarea constrângerii UNIQUE (duplicate key)
-                throw new DatabaseException("Registration failed: Username already exists.", e);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetToUser(rs);
+                }
+                return null; // Nu a fost găsit niciun user cu acest username
             }
-            throw new DatabaseException("Error registering user: " + e.getMessage(), e);
+        } catch (SQLException e) {
+            throw new DatabaseException("Error finding user by username", e);
+        }
+    }
+
+    public User findByEmail(String email) throws DatabaseException {
+        String sql = "SELECT * FROM users WHERE email = ?";
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, email);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetToUser(rs);
+                }
+                return null; // Nu a fost găsit niciun user cu acest email
+            }
+        } catch (SQLException e) {
+            throw new DatabaseException("Error finding user by email", e);
         }
     }
 
     public User login(String username, String password) throws DatabaseException {
-        String sql = "SELECT id, username, email, registration_date, total_score, games_played, best_streak, current_level FROM users WHERE username = ? AND password = ?"; // Preluăm toate câmpurile relevante
+        String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
         try (Connection conn = DBUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, username);
-            ps.setString(2, password);
-            try (ResultSet rs = ps.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+            try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    User user = new User();
-                    user.setId(rs.getInt("id"));
-                    user.setUsername(rs.getString("username"));
-                    user.setEmail(rs.getString("email")); // Setăm email-ul
-                    user.setRegistrationDate(rs.getTimestamp("registration_date").toLocalDateTime());
-                    user.setTotalScore(rs.getInt("total_score"));
-                    user.setGamesPlayed(rs.getInt("games_played"));
-                    user.setBestStreak(rs.getInt("best_streak"));
-                    user.setCurrentLevel(rs.getInt("current_level"));
-                    return user;
+                    return mapResultSetToUser(rs);
+                }
+                return null; // Autentificare eșuată
+            }
+        } catch (SQLException e) {
+            throw new DatabaseException("Error during login", e);
+        }
+    }
+
+    private User mapResultSetToUser(ResultSet rs) throws SQLException {
+        User user = new User();
+        user.setId(rs.getInt("id"));
+        user.setUsername(rs.getString("username"));
+        user.setPassword(rs.getString("password"));
+        user.setEmail(rs.getString("email"));
+        user.setRegistration_date(rs.getTimestamp("registration_date").toLocalDateTime());
+        user.setTotalScore(rs.getInt("total_score"));
+        user.setGamesPlayed(rs.getInt("games_played"));
+        user.setBestStreak(rs.getInt("best_streak"));
+        user.setCurrentLevel(rs.getInt("current_level")); 
+        return user;
+    }
+
+    public boolean updateUserProfile(User user) throws DatabaseException {
+        String sql = "UPDATE users SET username = ?, email = ? WHERE id = ?";
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, user.getUsername());
+            stmt.setString(2, user.getEmail());
+            stmt.setInt(3, user.getId());
+
+            int affectedRows = stmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            throw new DatabaseException("Error updating user profile", e);
+        }
+    }
+    
+	public boolean save(User user) throws DatabaseException {
+        String sql = "INSERT INTO users (username, password, email, registration_date, totalScore, gamesPlayed, bestStreak, currentLevel) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+             
+            stmt.setString(1, user.getUsername());
+            stmt.setString(2, user.getPassword());
+            stmt.setString(3, user.getEmail());
+            stmt.setTimestamp(4, Timestamp.valueOf(user.getRegistration_date()));
+            stmt.setInt(5, user.getTotalScore());
+            stmt.setInt(6, user.getGamesPlayed());
+            stmt.setInt(7, user.getBestStreak());
+            stmt.setInt(8, user.getCurrentLevel());
+            
+            int affectedRows = stmt.executeUpdate();
+            if (affectedRows == 0) {
+                throw new DatabaseException("Creating user failed, no rows affected.");
+            }
+            
+            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    user.setId(generatedKeys.getInt(1));
+                } else {
+                    throw new DatabaseException("Creating user failed, no ID obtained.");
                 }
             }
+            return true;
         } catch (SQLException e) {
-            throw new DatabaseException("Error logging in: " + e.getMessage(), e);
-        }
-        return null; // Returnează null dacă autentificarea eșuează
-    }
-
-    public boolean userExists(String username) throws DatabaseException {
-        String sql = "SELECT 1 FROM users WHERE username = ?";
-        try (Connection conn = DBUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, username);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-        } catch (SQLException e) {
-            throw new DatabaseException("Error checking if user exists: " + e.getMessage(), e);
+            throw new DatabaseException("Error saving user", e);
         }
     }
-
-    public List<User> getLeaderboard(int limit) throws DatabaseException {
-        // Asigură-te că funcția din BD este exact "get_leaderboard"
-        String sql = "SELECT username, total_score, games_played, best_streak FROM users ORDER BY total_score DESC LIMIT ?"; // S-a folosit direct tabelul users, deoarece funcția get_leaderboard nu a fost furnizată în scriptul BD, dar e referită în UserDAO. Am presupus o implementare simplă.
-        // Daca exista functia get_leaderboard(INTEGER) in DB, atunci linia corecta ar fi:
-        // String sql = "SELECT username, total_score, games_played, best_streak FROM get_leaderboard(?)";
-
-        List<User> leaderboard = new ArrayList<>();
-
-        try (Connection conn = DBUtil.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, limit);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    User user = new User();
-                    user.setUsername(rs.getString("username"));
-                    user.setTotalScore(rs.getInt("total_score"));
-                    user.setGamesPlayed(rs.getInt("games_played"));
-                    user.setBestStreak(rs.getInt("best_streak"));
-                    leaderboard.add(user);
-                }
-            }
-        } catch (SQLException e) {
-            throw new DatabaseException("Error getting leaderboard: " + e.getMessage(), e);
-        }
-        return leaderboard;
-    }
+    // Alte metode existente în UserDAO...
 }

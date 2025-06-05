@@ -1,7 +1,7 @@
 package quiz.dao;
 
 import util.DBUtil;
-import util.DatabaseException;
+import quiz.exceptions.DatabaseException;
 
 import java.sql.*;
 

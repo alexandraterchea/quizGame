@@ -22,6 +22,30 @@ public class QuizSession {
         this.startedAt = LocalDateTime.now();
     }
 
+    public void startSession() {
+        this.startedAt = LocalDateTime.now();
+        this.completedAt = null;
+        this.correctAnswers = 0;
+        this.finalScore = 0;
+        this.timeTaken = 0;
+    }
+
+    public void completeSession(int correctAnswers, int finalScore, int timeTaken) {
+        this.correctAnswers = correctAnswers;
+        this.finalScore = finalScore;
+        this.timeTaken = timeTaken;
+        this.completedAt = LocalDateTime.now();
+    }
+
+    public boolean isCompleted() {
+        return completedAt != null;
+    }
+
+    public int calculateScorePercentage() {
+        if (totalQuestions == 0) return 0;
+        return (int)((correctAnswers * 100.0) / totalQuestions);
+    }
+
     public int getId() {
         return id;
     }
@@ -93,4 +117,6 @@ public class QuizSession {
     public void setSessionType(String sessionType) {
         this.sessionType = sessionType;
     }
+
+
 }
